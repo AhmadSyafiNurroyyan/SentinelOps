@@ -1,4 +1,4 @@
-.venv/
+﻿.venv/
 __pycache__/
 *.pyc
 .env
@@ -6,5 +6,4 @@ corpus/raw/
 faiss_index/
 *.pkl
 *.db
-corpus/et_rules.json
 corpus/et_rules.json
