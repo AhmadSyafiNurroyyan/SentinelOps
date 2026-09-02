@@ -6,3 +6,4 @@ corpus/raw/
 faiss_index/
 *.pkl
 *.db
+corpus/et_rules.json
