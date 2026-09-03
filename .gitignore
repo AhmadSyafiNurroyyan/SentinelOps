@@ -11,3 +11,4 @@ corpus/et_rules.json
 eve_attack_scenario.json/
 eve_attack_scenario.json.gz
 eveinsufficient*.json
+corpus/observed_sids*.json
