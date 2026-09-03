@@ -1,0 +1,84 @@
+[
+  {
+    "chunk_id": "tech_t1021",
+    "technique_id": "T1021",
+    "name": "Remote Services",
+    "tactics": [
+      "lateral-movement"
+    ],
+    "sids": [],
+    "text": "Remote Services (T1021). Adversaries may use [Valid Accounts](https://attack.mitre.org/techniques/T1078) to log into a service that accepts remote connections, such as telnet, SSH, and VNC. The adversary may then perform actions as the logged-on user.\n\nIn an enterprise environment, servers and workstations can be organized into domains. Domains provide centralized identity management, allowing users to login using one set of credentials across the entire network. If an adversary is able to obtain a set of valid domain credentials, they could login to many different machines using remote access protocols such as secure shell (SSH) or remote desktop protocol (RDP).(Citation: SSH Secure Shell)(Citation: TechNet Remote Desktop Services) They could also login to accessible SaaS or IaaS services, such as those that federate their identities to the domain, or management platforms for internal virtualization environments such as VMware vCenter. \n\nLegitimate applications (such as [Software Deployment Tools](https://attack.mitre.org/techniques/T1072) and other administrative programs) may utilize [Remote Services](https://attack.mitre.org/techniques/T1021) to access remote hosts. For example, Apple Remote Desktop (ARD) on macOS is native software used for remote management. ARD leverages a blend of protocols, including [VNC](https://attack.mitre.org/techniques/T1021/005) to send the screen and control buffers and [SSH](https://attack.mitre.org/techniques/T1021/004) for secure file transfer.(Citation: Remote Management MDM macOS)(Citation: Kickstart Apple Remote Desktop commands)(Citation: Apple Remote Desktop Admin Guide 3.3) Adversaries can abuse applications such as ARD to gain remote code execution and perform lateral movement. In versions of macOS prior to 10.14, an adversary can escalate an SSH session to an ARD session which enables an adversary to accept TCC (Transparency, Consent, and Control) prompts without user interaction and gain access to data.(Citation: FireEye 2019 Apple Remote Desktop)(Citation: Lockboxx ARD 2019)(Citation: Kickstart Apple Remote Desktop commands) Mitigations: Limit Access to Resource Over Network; Audit; User Account Management; Disable or Remove Feature or Program; Multi-factor Authentication; Password Policies. Detection: Logon via RDP or WMI by a user account followed by uncommon command execution, file manipulation, or lateral network connections.",
+    "text_id": "**Remote Services** adalah saat penyerang menggunakan akun yang sah (Valid Accounts) untuk masuk ke sistem sekolah Anda melalui layanan koneksi jarak jauh yang seharusnya sah (seperti SSH atau RDP), layaknya pengguna biasa. Ini sangat berbahaya karena setelah berhasil masuk, mereka dapat bertindak sebagai pengguna yang login, mengendalikan sistem, mengakses data sensitif, atau menyebar ke banyak komputer lain di jaringan. Tanda-tandanya termasuk eksekusi perintah asing atau manipulasi file yang tidak biasa setelah login RDP/WMI, serta adanya koneksi jaringan mencurigakan dari komputer yang diakses.",
+    "source_doc": "MITRE ATT&CK Enterprise v19.1",
+    "source_url": "https://attack.mitre.org/techniques/T1021/"
+  },
+  {
+    "chunk_id": "tech_t1046",
+    "technique_id": "T1046",
+    "name": "Network Service Discovery",
+    "tactics": [
+      "discovery"
+    ],
+    "sids": [
+      1000001,
+      2210063,
+      2260002
+    ],
+    "text": "Network Service Discovery (T1046). Adversaries may attempt to get a listing of services running on remote hosts and local network infrastructure devices, including those that may be vulnerable to remote software exploitation. Common methods to acquire this information include port, vulnerability, and/or wordlist scans using tools that are brought onto a system.(Citation: CISA AR21-126A FIVEHANDS May 2021)   \n\nWithin cloud environments, adversaries may attempt to discover services running on other cloud hosts. Additionally, if the cloud environment is connected to a on-premises environment, adversaries may be able to identify services running on non-cloud systems as well.\n\nWithin macOS environments, adversaries may use the native Bonjour application to discover services running on other macOS hosts within a network. The Bonjour mDNSResponder daemon automatically registers and advertises a host’s registered services on the network. For example, adversaries can use a mDNS query (such as <code>dns-sd -B _ssh._tcp .</code>) to find other systems broadcasting the ssh service.(Citation: apple doco bonjour description)(Citation: macOS APT Activity Bradley) Mitigations: Disable or Remove Feature or Program; Network Intrusion Prevention; Network Segmentation. Detection: Detects processes performing network enumeration (e.g., port scans, service probing) by correlating process creation, socket connections, and sequential destination IP probing within a time window. Related detection signatures: SID 1000001 (Potential TCP Port Scan Detected), SID 2210063 (SURICATA STREAM 3way handshake excessive different SYNs), SID 2260002 (SURICATA Applayer Detect protocol only one direction).",
+    "text_id": "Network Service Discovery adalah cara penyerang mencoba menemukan daftar layanan yang berjalan di komputer dan perangkat jaringan Anda. Mereka melakukannya dengan *port scan* (memindai port terbuka) atau *vulnerability scan* untuk mengidentifikasi layanan yang berpotensi rentan dan bisa diserang. Tanda-tandanya termasuk aktivitas pemindaian jaringan yang tidak biasa, seperti banyak upaya koneksi atau *port scan* ke berbagai alamat IP dalam waktu singkat.",
+    "source_doc": "MITRE ATT&CK Enterprise v19.1",
+    "source_url": "https://attack.mitre.org/techniques/T1046/"
+  },
+  {
+    "chunk_id": "tech_t1048",
+    "technique_id": "T1048",
+    "name": "Exfiltration Over Alternative Protocol",
+    "tactics": [
+      "exfiltration"
+    ],
+    "sids": [],
+    "text": "Exfiltration Over Alternative Protocol (T1048). Adversaries may steal data by exfiltrating it over a different protocol than that of the existing command and control channel. The data may also be sent to an alternate network location from the main command and control server.  \n\nAlternate protocols include FTP, SMTP, HTTP/S, DNS, SMB, or any other network protocol not being used as the main command and control channel. Adversaries may also opt to encrypt and/or obfuscate these alternate channels. \n\n[Exfiltration Over Alternative Protocol](https://attack.mitre.org/techniques/T1048) can be done using various common operating system utilities such as [Net](https://attack.mitre.org/software/S0039)/SMB or FTP.(Citation: Palo Alto OilRig Oct 2016) On macOS and Linux <code>curl</code> may be used to invoke protocols such as HTTP/S or FTP/S to exfiltrate data from a system.(Citation: 20 macOS Common Tools and Techniques)\n\nMany IaaS and SaaS platforms (such as Microsoft Exchange, Microsoft SharePoint, GitHub, and AWS S3) support the direct download of files, emails, source code, and other sensitive information via the web console or [Cloud API](https://attack.mitre.org/techniques/T1059/009). Mitigations: Network Segmentation; Data Loss Prevention; Filter Network Traffic; Network Intrusion Prevention; Restrict File and Directory Permissions; User Account Management. Detection: Detects unusual outbound file transfer behavior using protocols like FTP, SMB, SMTP, or DNS, involving non-standard processes, off-hour activity, or uncommonly high volume.",
+    "text_id": "\"Exfiltration Over Alternative Protocol\" adalah teknik di mana penjahat siber mencuri data sensitif dari jaringan Anda dengan mengirimkannya menggunakan *protokol* (aturan komunikasi jaringan) yang tidak biasa, seperti FTP, SMTP, atau DNS, alih-alih jalur perintah utama mereka.\n\nIni berbahaya karena memungkinkan pencurian data penting secara tersembunyi. Anda harus waspada terhadap transfer file keluar yang tidak biasa melalui protokol seperti FTP, SMB, SMTP, atau DNS, terutama jika itu dilakukan oleh proses yang tidak standar, di luar jam kerja, atau dengan volume data yang sangat tinggi.",
+    "source_doc": "MITRE ATT&CK Enterprise v19.1",
+    "source_url": "https://attack.mitre.org/techniques/T1048/"
+  },
+  {
+    "chunk_id": "tech_t1071",
+    "technique_id": "T1071",
+    "name": "Application Layer Protocol",
+    "tactics": [
+      "command-and-control"
+    ],
+    "sids": [],
+    "text": "Application Layer Protocol (T1071). Adversaries may communicate using OSI application layer protocols to avoid detection/network filtering by blending in with existing traffic. Commands to the remote system, and often the results of those commands, will be embedded within the protocol traffic between the client and server. \n\nAdversaries may utilize many different protocols, including those used for web browsing, transferring files, electronic mail, DNS, or publishing/subscribing. For connections that occur internally within an enclave (such as those between a proxy or pivot node and other nodes), commonly used protocols are SMB, SSH, or RDP.(Citation: Mandiant APT29 Eye Spy Email Nov 22)  Mitigations: Network Intrusion Prevention; Filter Network Traffic. Detection: Detects suspicious usage of common application-layer protocols (e.g., HTTP, HTTPS, DNS, SMB) by abnormal processes, with high outbound byte counts or irregular ports, possibly indicating command and control or data exfiltration.",
+    "text_id": "Ini adalah saat penyerang menggunakan protokol jaringan standar (seperti yang untuk browsing web, email, atau transfer file) untuk menyembunyikan komunikasi jahat mereka di antara lalu lintas jaringan sekolah yang normal. Berbahaya karena mereka bisa menyelipkan perintah dan bahkan mencuri data melalui protokol ini tanpa terdeteksi oleh sistem keamanan biasa. Waspadai penggunaan protokol umum (seperti HTTP, DNS, SMB) yang mencurigakan oleh program abnormal, volume data keluar yang sangat tinggi, atau penggunaan *port* yang tidak biasa, karena ini bisa menjadi tanda *command and control* (C2) atau *data exfiltration* (pencurian data).",
+    "source_doc": "MITRE ATT&CK Enterprise v19.1",
+    "source_url": "https://attack.mitre.org/techniques/T1071/"
+  },
+  {
+    "chunk_id": "tech_t1110",
+    "technique_id": "T1110",
+    "name": "Brute Force",
+    "tactics": [
+      "credential-access"
+    ],
+    "sids": [],
+    "text": "Brute Force (T1110). Adversaries may use brute force techniques to gain access to accounts when passwords are unknown or when password hashes are obtained.(Citation: TrendMicro Pawn Storm Dec 2020) Without knowledge of the password for an account or set of accounts, an adversary may systematically guess the password using a repetitive or iterative mechanism.(Citation: Dragos Crashoverride 2018) Brute forcing passwords can take place via interaction with a service that will check the validity of those credentials or offline against previously acquired credential data, such as password hashes.\n\nBrute forcing credentials may take place at various points during a breach. For example, adversaries may attempt to brute force access to [Valid Accounts](https://attack.mitre.org/techniques/T1078) within a victim environment leveraging knowledge gathered from other post-compromise behaviors such as [OS Credential Dumping](https://attack.mitre.org/techniques/T1003), [Account Discovery](https://attack.mitre.org/techniques/T1087), or [Password Policy Discovery](https://attack.mitre.org/techniques/T1201). Adversaries may also combine brute forcing activity with behaviors such as [External Remote Services](https://attack.mitre.org/techniques/T1133) as part of Initial Access. \n\nIf an adversary guesses the correct password but fails to login to a compromised account due to location-based conditional access policies, they may change their infrastructure until they match the victim’s location and therefore bypass those policies.(Citation: ReliaQuest Health Care Social Engineering Campaign 2024) Mitigations: User Account Management; Account Use Policies; Multi-factor Authentication; Password Policies. Detection: High volume of failed logon attempts followed by a successful one from a suspicious user, host, or timeframe",
+    "text_id": "\"Brute force\" adalah upaya penyerang untuk menebak kata sandi akun secara sistematis dan berulang-ulang sampai berhasil, bahkan jika mereka hanya memiliki \"hash\" (bentuk terenkripsi) kata sandi tersebut. Ini sangat berbahaya karena bisa memberi penyerang akses ke akun atau sistem Anda, bahkan sebagai titik masuk awal. Salah satu tanda bahayanya adalah banyaknya percobaan login yang gagal diikuti oleh login yang berhasil dari pengguna, lokasi, atau waktu yang mencurigakan.",
+    "source_doc": "MITRE ATT&CK Enterprise v19.1",
+    "source_url": "https://attack.mitre.org/techniques/T1110/"
+  },
+  {
+    "chunk_id": "tech_t1595",
+    "technique_id": "T1595",
+    "name": "Active Scanning",
+    "tactics": [
+      "reconnaissance"
+    ],
+    "sids": [],
+    "text": "Active Scanning (T1595). Adversaries may execute active reconnaissance scans to gather information that can be used during targeting. Active scans are those where the adversary probes victim infrastructure via network traffic, as opposed to other forms of reconnaissance that do not involve direct interaction.\n\nAdversaries may perform different forms of active scanning depending on what information they seek to gather. These scans can also be performed in various ways, including using native features of network protocols such as ICMP.(Citation: Botnet Scan)(Citation: OWASP Fingerprinting) Information from these scans may reveal opportunities for other forms of reconnaissance (ex: [Search Open Websites/Domains](https://attack.mitre.org/techniques/T1593) or [Search Open Technical Databases](https://attack.mitre.org/techniques/T1596)), establishing operational resources (ex: [Develop Capabilities](https://attack.mitre.org/techniques/T1587) or [Obtain Capabilities](https://attack.mitre.org/techniques/T1588)), and/or initial access (ex: [External Remote Services](https://attack.mitre.org/techniques/T1133) or [Exploit Public-Facing Application](https://attack.mitre.org/techniques/T1190)). Mitigations: Pre-compromise. Detection: Monitor network data for uncommon data flows. Processes utilizing the network that do not normally have network communication or have never been seen before are suspicious.\nMonitor and analyze traffic patterns and packet inspection associated to protocol(s) that do not follow the expected protocol standards and traffic flows (e.g extraneous packets that do not belong to established flows, gratuitous or anomalous traffic patterns, anomalous syntax, or structure). Consider correlation with process monitoring and command line to detect anomalous processes execution and command line arguments associated to traffic patterns (e.g. monitor anomalies in use of files that do not normally initiate connections for respective protocol(s)).",
+    "text_id": "Pemindaian Aktif adalah saat penyerang mencoba mengumpulkan informasi tentang jaringan sekolah Anda dengan 'menjelajahi' (probing) infrastruktur melalui lalu lintas jaringan, misalnya menggunakan protokol seperti ICMP. Ini berbahaya karena informasi yang didapat bisa digunakan untuk menemukan peluang masuk awal atau kelemahan lain yang dapat dieksploitasi. Tanda-tandanya meliputi aliran data jaringan yang tidak biasa, program yang tiba-tiba berkomunikasi di jaringan padahal biasanya tidak, atau pola lalu lintas dan paket yang tidak sesuai standar protokol.",
+    "source_doc": "MITRE ATT&CK Enterprise v19.1",
+    "source_url": "https://attack.mitre.org/techniques/T1595/"
+  }
+]
