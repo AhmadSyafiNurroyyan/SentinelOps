@@ -1,0 +1,3 @@
+SID 1000001 (Potential TCP Port Scan Detected)
+SID 2260002 (SURICATA Applayer Detect protocol only one direction)
+SID 2210063 (SURICATA STREAM 3way handshake excessive different SYNs)
