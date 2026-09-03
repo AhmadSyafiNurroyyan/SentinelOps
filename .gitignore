@@ -12,3 +12,4 @@ eve_attack_scenario.json/
 eve_attack_scenario.json.gz
 eveinsufficient*.json
 corpus/observed_sids*.json
+corpus/.summary_cache.json
