@@ -49,6 +49,7 @@ CREATE TABLE IF NOT EXISTS hosts (
     last_seen       TEXT,
     risk_score      INTEGER DEFAULT 0,        -- 0-100
     band            TEXT    DEFAULT 'Aman',   -- Aman, Perhatian, Berisiko
+    reason          TEXT    DEFAULT '',       -- alasan singkat utk dashboard
     baseline_status TEXT    DEFAULT 'insufficient',
     total_events    INTEGER DEFAULT 0,
     updated_at      TEXT    DEFAULT (datetime('now'))
@@ -119,24 +120,25 @@ def insert_events(rows):
 # ---------- hosts ----------
 
 def upsert_host(ip, risk_score, band, baseline_status, total_events,
-                first_seen=None, last_seen=None):
+                reason='', first_seen=None, last_seen=None):
     """Buat atau perbarui satu host. Dipakai setelah scoring dihitung."""
     sql = """
         INSERT INTO hosts (ip, first_seen, last_seen, risk_score, band,
-                           baseline_status, total_events, updated_at)
+                           reason, baseline_status, total_events, updated_at)
         VALUES (:ip, :first_seen, :last_seen, :risk_score, :band,
-                :baseline_status, :total_events, datetime('now'))
+                :reason, :baseline_status, :total_events, datetime('now'))
         ON CONFLICT(ip) DO UPDATE SET
             last_seen       = COALESCE(:last_seen, last_seen),
             risk_score      = :risk_score,
             band            = :band,
+            reason          = :reason,
             baseline_status = :baseline_status,
             total_events    = :total_events,
             updated_at      = datetime('now')
     """
     params = {
         "ip": ip, "first_seen": first_seen, "last_seen": last_seen,
-        "risk_score": risk_score, "band": band,
+        "risk_score": risk_score, "band": band, "reason": reason,
         "baseline_status": baseline_status, "total_events": total_events,
     }
     with db_cursor() as cur:
@@ -147,8 +149,8 @@ def get_hosts():
     """Semua host, diurutkan dari skor tertinggi. Dipakai GET /assets."""
     with db_cursor() as cur:
         cur.execute(
-            "SELECT ip, risk_score, band, baseline_status, total_events, "
-            "last_seen FROM hosts ORDER BY risk_score DESC"
+            "SELECT ip, risk_score, band, reason, baseline_status, "
+            "total_events, last_seen FROM hosts ORDER BY risk_score DESC"
         )
         return [dict(r) for r in cur.fetchall()]
 
