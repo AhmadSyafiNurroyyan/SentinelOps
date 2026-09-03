@@ -21,6 +21,11 @@ import pickle
 import faiss
 import numpy as np
 
+# Redam peringatan informatif AFC dari library google-genai.
+# Ini bukan error; sistem tidak memakai function calling sama sekali.
+import logging
+logging.getLogger("google_genai.models").setLevel(logging.ERROR)
+
 HERE = os.path.dirname(os.path.abspath(__file__))
 FAISS_PATH = os.path.join(HERE, "..", "faiss_index", "index.faiss")
 META_PATH = os.path.join(HERE, "..", "faiss_index", "meta.json")
@@ -122,6 +127,14 @@ class RAGEngine:
             contents=prompt,
         )
 
+        answer = resp.text.strip()
+
+        # Kalau LLM menolak karena di luar cakupan, jangan lampirkan sumber.
+        # Mencantumkan sumber untuk jawaban "tidak tahu" itu menyesatkan.
+        REFUSAL = "tidak tersedia dalam basis pengetahuan"
+        if REFUSAL in answer:
+            return {"answer": answer, "sources": []}
+
         sources = [
             {
                 "technique_id": c["technique_id"],
@@ -132,7 +145,7 @@ class RAGEngine:
             }
             for c in contexts
         ]
-        return {"answer": resp.text.strip(), "sources": sources}
+        return {"answer": answer, "sources": sources}
 
 
 def get_engine():
