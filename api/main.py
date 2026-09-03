@@ -18,6 +18,7 @@ Lalu buka http://localhost:8000/docs untuk dokumentasi otomatis.
 """
 
 from fastapi import FastAPI, HTTPException
+from pydantic import BaseModel
 
 from . import db
 from . import schemas
@@ -30,6 +31,16 @@ app = FastAPI(
 
 # Pastikan skema ada sejak modul dimuat, sebelum request pertama masuk.
 db.init_db()
+
+# Muat engine RAG sekali. Kalau index belum dibangun, aplikasi tetap
+# hidup dan /chat memberi pesan jelas, bukan crash saat startup.
+_rag_engine = None
+_rag_error = None
+try:
+    from .rag_loader import load_engine
+    _rag_engine = load_engine()
+except Exception as exc:
+    _rag_error = str(exc)
 
 
 @app.get("/health")
@@ -96,14 +107,21 @@ def timeline(limit: int = 100):
     return {"events": rows}
 
 
-@app.get("/chat")
-def chat_placeholder():
+class ChatRequest(BaseModel):
+    query: str
+
+
+@app.post("/chat")
+def chat(req: ChatRequest):
     """
-    Placeholder. Diganti implementasi RAG penuh setelah engine.py jadi.
-    Dibuat sekarang supaya kontrak API lengkap dan frontend bisa
-    menyambung lebih awal.
+    Tanya jawab RAG. Menerima {"query": "..."}, mengembalikan jawaban
+    Bahasa Indonesia beserta sitasi.
     """
-    return {
-        "answer": "Modul chat belum aktif. Mesin RAG sedang dibangun.",
-        "sources": [],
-    }
+    if _rag_engine is None:
+        raise HTTPException(
+            status_code=503,
+            detail=f"Mesin RAG belum siap. Jalankan indexer dulu. ({_rag_error})",
+        )
+    if not req.query.strip():
+        raise HTTPException(status_code=422, detail="Pertanyaan kosong")
+    return _rag_engine.answer(req.query)
