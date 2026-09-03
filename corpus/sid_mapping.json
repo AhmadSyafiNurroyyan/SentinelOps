@@ -1,0 +1,38 @@
+[
+  {
+    "sid": 1000001,
+    "signature": "Potential TCP Port Scan Detected",
+    "source": "local",
+    "technique_id": "T1046",
+    "technique_name": "Network Service Discovery",
+    "note": "Rule lokal buatan tim, rentang SID 1000000-1999999",
+    "confirmed": true
+  },
+  {
+    "sid": 2210063,
+    "signature": "SURICATA STREAM 3way handshake excessive different SYNs",
+    "source": "suricata-builtin",
+    "technique_id": "T1046",
+    "technique_name": "Network Service Discovery",
+    "note": "Rule bawaan Suricata (GPLv2), teks rule tidak disalin ke corpus",
+    "confirmed": true
+  },
+  {
+    "sid": 2260002,
+    "signature": "SURICATA Applayer Detect protocol only one direction",
+    "source": "suricata-builtin",
+    "technique_id": "T1046",
+    "technique_name": "Network Service Discovery",
+    "note": "Rule bawaan Suricata (GPLv2), teks rule tidak disalin ke corpus",
+    "confirmed": true
+  },
+  {
+    "sid": 2034636,
+    "signature": "ET INFO Python SimpleHTTP ServerBanner",
+    "source": "et-open",
+    "technique_id": null,
+    "technique_name": null,
+    "note": "Benign. Banner dari generator traffic lab, bukan serangan. Tidak dipetakan.",
+    "confirmed": true
+  }
+]
