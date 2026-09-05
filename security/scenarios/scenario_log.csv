@@ -1,0 +1,5 @@
+scenario,start_utc,end_utc,command,exit_code
+"scenario1_synscan","2026-08-29T14:49:27+0000","2026-08-29T14:51:05+0000","nmap -sS -p- -T4 10.163.202.50 10.163.202.51 10.163.202.52 192.168.242.130 -oN scenario1_synscan.txt","0"
+"scenario2_nullscan","2026-08-29T14:51:11+0000","2026-08-29T14:51:44+0000","nmap -sN -p- -T4 192.168.242.130 -oN scenario2_nullscan.txt","0"
+"scenario3_bruteforce","2026-08-29T14:51:49+0000","2026-08-29T14:52:04+0000","hydra -l benign -P wordlist.txt ssh://192.168.242.130","0"
+"scenario4_bigtransfer","2026-08-29T14:52:12+0000","2026-08-29T14:52:39+0000","scp bigfile.bin benign@192.168.242.130:/tmp/","0"
