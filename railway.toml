@@ -1,2 +1,2 @@
 [deploy]
-startCommand = "uvicorn api.main:app --host 0.0.0.0 --port $PORT"
+startCommand = "python corpus/build_attack.py && python corpus/build_corpus.py && python corpus/indexer.py && uvicorn api.main:app --host 0.0.0.0 --port $PORT"
