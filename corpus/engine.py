@@ -85,11 +85,20 @@ class RAGEngine:
                 break
         return contexts
 
-    def answer(self, query):
+    def answer(self, query, host_data=None):
+        """Retrieve lalu generate jawaban dengan sitasi."""
         import prompts
 
         contexts = self.retrieve(query)
         prompt = prompts.build_prompt(query, contexts)
+
+        if host_data:
+            ip = host_data.get("ip")
+            skor = host_data.get("risk_score")
+            band = host_data.get("band")
+            reason = host_data.get("reason")
+            host_text = f"Data host aktual: IP {ip} memiliki skor risiko {skor}, status {band}, alasan: {reason}.\n\n"
+            prompt = prompt.replace(prompts.CONTEXT_OPEN, host_text + prompts.CONTEXT_OPEN)
 
         resp = self.client.models.generate_content(
             model=CHAT_MODEL,
