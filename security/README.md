@@ -14,7 +14,7 @@ ketiga yang menjadi target.
 
 ## 1. Topologi laboratorium
 
-![Diagram topologi](diagram-topologi.png)
+![Diagram topologi](diagram-topologi.PNG)
 
 | Peran      | Alamat IP         | Keterangan                                    |
 | :--------- | :---------------- | :-------------------------------------------- |
