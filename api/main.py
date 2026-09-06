@@ -1,8 +1,11 @@
 import os
-from fastapi import FastAPI, HTTPException
+from pathlib import Path
+
+from fastapi import FastAPI, HTTPException, Depends
 from fastapi.responses import FileResponse
+from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel
-from fastapi import Depends
+
 from . import security
 from . import db
 from . import schemas
@@ -21,6 +24,9 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
+WEB_DIR = Path(__file__).resolve().parent.parent / "web"
+app.mount("/static", StaticFiles(directory=WEB_DIR), name="static")
+
 db.init_db()
 _rag_engine = None
 _rag_error = None
@@ -30,6 +36,9 @@ try:
 except Exception as exc:
     _rag_error = str(exc)
 
+@app.get("/")
+def root():
+    return FileResponse(WEB_DIR / "index.html")
 
 @app.get("/")
 def serve_frontend():
