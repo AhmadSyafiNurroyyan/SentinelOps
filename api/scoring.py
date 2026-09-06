@@ -57,18 +57,20 @@ def ambil_events(dest_ip, start_dt, end_dt):
         )
         return [dict(r) for r in cur.fetchall()]
 
-def get_all_hosts_seen(start_dt, end_dt, exclude_ips=None):
+def get_all_hosts_seen(rentang_baseline, rentang_window, exclude_ips=None):
     exclude_ips = set(exclude_ips or [])
-    start_str = format_batas_waktu(start_dt, akhir=False)
-    end_str = format_batas_waktu(end_dt, akhir=True)
+    semua_ip = set()
     with db.db_cursor() as cur:
-        cur.execute(
-            "SELECT DISTINCT dest_ip FROM events WHERE dest_ip IS NOT NULL "
-            "AND ts >= ? AND ts <= ?",
-            (start_str, end_str),
-        )
-        semua_ip = [r["dest_ip"] for r in cur.fetchall()]
-    return [ip for ip in semua_ip if ip not in exclude_ips and ip_layak_discore(ip)]
+        for start_dt, end_dt in (rentang_baseline, rentang_window):
+            start_str = format_batas_waktu(start_dt, akhir=False)
+            end_str = format_batas_waktu(end_dt, akhir=True)
+            cur.execute(
+                "SELECT DISTINCT dest_ip FROM events WHERE dest_ip IS NOT NULL "
+                "AND ts >= ? AND ts <= ?",
+                (start_str, end_str),
+            )
+            semua_ip.update(r["dest_ip"] for r in cur.fetchall())
+    return sorted(ip for ip in semua_ip if ip not in exclude_ips and ip_layak_discore(ip))
 
 def hitung_fitur(events, durasi_menit):
     if durasi_menit <= 0:
@@ -244,7 +246,10 @@ def main():
     window_mulai = parse_argumen_waktu(args.window_start)
     window_selesai = parse_argumen_waktu(args.window_end)
 
-    hosts = get_all_hosts_seen(baseline_mulai, window_selesai, exclude_ips=args.exclude_ip)
+    hosts = get_all_hosts_seen(
+        (baseline_mulai, baseline_selesai), (window_mulai, window_selesai),
+        exclude_ips=args.exclude_ip,
+    )
     print(f"[scoring] Menghitung skor untuk {len(hosts)} host: {hosts}")
 
     for host in hosts:
