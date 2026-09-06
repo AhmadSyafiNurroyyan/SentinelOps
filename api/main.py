@@ -60,18 +60,36 @@ def get_asset(ip: str):
 @app.get("/timeline")
 def timeline(limit: int = 100):
     limit = max(1, min(limit, 500))
+    half = limit // 2
+
     with db.db_cursor() as cur:
+        # Ambil alert (signature) terpisah supaya tidak tenggelam
         cur.execute(
             "SELECT ts, event_type, src_ip, dest_ip, dest_port, "
             "sid, signature, severity FROM events "
+            "WHERE sid IS NOT NULL "
             "ORDER BY id DESC LIMIT ?",
-            (limit,),
+            (half,),
         )
-        rows = [dict(r) for r in cur.fetchall()]
+        sig_rows = [dict(r) for r in cur.fetchall()]
 
-    for r in rows:
-        r["source"] = "signature" if r.get("sid") else "statistical"
-    return {"events": rows}
+        # Ambil flow/dns tanpa alert, KECUALIKAN event_type 'stats'
+        # karena stats adalah catatan internal Suricata (tanpa src/dest IP)
+        cur.execute(
+            "SELECT ts, event_type, src_ip, dest_ip, dest_port, "
+            "sid, signature, severity FROM events "
+            "WHERE sid IS NULL AND event_type != 'stats' "
+            "ORDER BY id DESC LIMIT ?",
+            (half,),
+        )
+        stat_rows = [dict(r) for r in cur.fetchall()]
+
+    for r in sig_rows:
+        r["source"] = "signature"
+    for r in stat_rows:
+        r["source"] = "statistical"
+
+    return {"events": sig_rows + stat_rows}
 
 
 class ChatRequest(BaseModel):
