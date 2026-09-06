@@ -1,25 +1,7 @@
-"""
-API SentinelOps.
-
-Menyajikan lima endpoint:
-    POST /ingest        terima batch event dari Log Shipper
-    GET  /assets        daftar host dengan skor risiko
-    GET  /assets/{ip}   detail satu host + riwayat skor
-    GET  /timeline      event, ditandai signature atau statistical
-    GET  /chat          placeholder, diisi setelah RAG jadi
-    GET  /health        liveness, tanpa auth
-
-main.py sengaja tipis: hanya routing dan validasi. Logika ada di modul
-lain (db, schemas, nanti scoring dan rag).
-
-Jalankan lokal:
-    uvicorn api.main:app --reload --port 8000
-Lalu buka http://localhost:8000/docs untuk dokumentasi otomatis.
-"""
-
 from fastapi import FastAPI, HTTPException
 from pydantic import BaseModel
-
+from fastapi import Depends
+from . import security
 from . import db
 from . import schemas
 
@@ -62,7 +44,7 @@ def health():
     }
 
 
-@app.post("/ingest")
+@app.post("/ingest", dependencies=[Depends(security.verify_hmac_signature)])
 def ingest(batch: schemas.IngestBatch):
     """
     Terima batch event mentah Suricata dari shipper, ratakan, simpan.

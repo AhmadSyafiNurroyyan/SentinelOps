@@ -1,0 +1,27 @@
+# Nmap 7.95 scan initiated Sat Aug 29 21:49:27 2026 as: nmap -sS -p- -T4 -oN scenario1_synscan.txt 10.163.202.50 10.163.202.51 10.163.202.52 192.168.242.130
+Nmap scan report for 10.163.202.50
+Host is up (0.0044s latency).
+Not shown: 65534 closed tcp ports (reset)
+PORT   STATE SERVICE
+22/tcp open  ssh
+
+Nmap scan report for 10.163.202.51
+Host is up (0.0038s latency).
+Not shown: 65534 closed tcp ports (reset)
+PORT   STATE SERVICE
+22/tcp open  ssh
+
+Nmap scan report for 10.163.202.52
+Host is up (0.0038s latency).
+Not shown: 65534 closed tcp ports (reset)
+PORT   STATE SERVICE
+22/tcp open  ssh
+
+Nmap scan report for 192.168.242.130
+Host is up (0.0017s latency).
+Not shown: 65534 closed tcp ports (reset)
+PORT   STATE SERVICE
+22/tcp open  ssh
+MAC Address: 00:0C:29:1A:B8:A5 (VMware)
+
+# Nmap done at Sat Aug 29 21:51:05 2026 -- 4 IP addresses (4 hosts up) scanned in 97.50 seconds

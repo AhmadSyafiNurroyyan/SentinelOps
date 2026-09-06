@@ -1,0 +1,9 @@
+# Nmap 7.95 scan initiated Sat Aug 29 21:51:11 2026 as: nmap -sN -p- -T4 -oN scenario2_nullscan.txt 192.168.242.130
+Nmap scan report for 192.168.242.130
+Host is up (0.0016s latency).
+Not shown: 65534 closed tcp ports (reset)
+PORT   STATE         SERVICE
+22/tcp open|filtered ssh
+MAC Address: 00:0C:29:1A:B8:A5 (VMware)
+
+# Nmap done at Sat Aug 29 21:51:44 2026 -- 1 IP address (1 host up) scanned in 33.01 seconds
