@@ -112,4 +112,11 @@ def chat(req: ChatRequest):
         )
     if not req.query.strip():
         raise HTTPException(status_code=422, detail="Pertanyaan kosong")
-    return _rag_engine.answer(req.query)
+
+    import re
+    host_data = None
+    ip_match = re.search(r'\b(?:\d{1,3}\.){3}\d{1,3}\b', req.query)
+    if ip_match:
+        host_data = db.get_host(ip_match.group(0))
+
+    return _rag_engine.answer(req.query, host_data=host_data)
