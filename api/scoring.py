@@ -1,5 +1,7 @@
 import argparse
 import datetime
+import ipaddress
+import math
 import statistics
 import sys
 
@@ -28,6 +30,22 @@ def parse_argumen_waktu(teks):
         dt = dt.replace(tzinfo=datetime.timezone.utc)
     return dt.astimezone(datetime.timezone.utc)
 
+
+def ip_layak_discore(ip_str):
+    if not ip_str:
+        return False
+    try:
+        ip_obj = ipaddress.ip_address(ip_str)
+    except ValueError:
+        return False
+    if ip_str == "255.255.255.255":
+        return False
+    if (ip_obj.is_multicast or ip_obj.is_reserved or ip_obj.is_loopback
+            or ip_obj.is_link_local or ip_obj.is_unspecified):
+        return False
+    return True
+
+
 def ambil_events(dest_ip, start_dt, end_dt):
     start_str = format_batas_waktu(start_dt, akhir=False)
     end_str = format_batas_waktu(end_dt, akhir=True)
@@ -39,7 +57,8 @@ def ambil_events(dest_ip, start_dt, end_dt):
         )
         return [dict(r) for r in cur.fetchall()]
 
-def get_all_hosts_seen(start_dt, end_dt):
+def get_all_hosts_seen(start_dt, end_dt, exclude_ips=None):
+    exclude_ips = set(exclude_ips or [])
     start_str = format_batas_waktu(start_dt, akhir=False)
     end_str = format_batas_waktu(end_dt, akhir=True)
     with db.db_cursor() as cur:
@@ -48,7 +67,8 @@ def get_all_hosts_seen(start_dt, end_dt):
             "AND ts >= ? AND ts <= ?",
             (start_str, end_str),
         )
-        return [r["dest_ip"] for r in cur.fetchall()]
+        semua_ip = [r["dest_ip"] for r in cur.fetchall()]
+    return [ip for ip in semua_ip if ip not in exclude_ips and ip_layak_discore(ip)]
 
 def hitung_fitur(events, durasi_menit):
     if durasi_menit <= 0:
@@ -109,17 +129,50 @@ def percentile_rank(nilai, daftar_baseline):
     count_equal = sum(1 for x in daftar_baseline if x == nilai)
     return ((count_less + 0.5 * count_equal) / n) * 100
 
+
+def mad_zscore(nilai, baseline_list):
+    if len(baseline_list) < 2:
+        return 0.0
+    median = statistics.median(baseline_list)
+    mad = statistics.median(abs(x - median) for x in baseline_list)
+    if mad > 0:
+        return (nilai - median) / (1.4826 * mad)
+    try:
+        stdev = statistics.stdev(baseline_list)
+    except statistics.StatisticsError:
+        stdev = 0
+    if stdev > 0:
+        return (nilai - median) / stdev
+    return 0.0 if nilai == median else float("inf")
+
+
+def skor_dengan_magnitudo(nilai, baseline_list):
+    persentil = percentile_rank(nilai, baseline_list)
+    if not baseline_list:
+        return persentil
+    maksimum_baseline = max(baseline_list)
+    if nilai <= maksimum_baseline or maksimum_baseline <= 0:
+        return persentil
+    rasio = nilai / maksimum_baseline
+    bonus = min(60.0, math.log2(rasio) * 10)
+    return persentil + bonus
+
 def buat_alasan(fitur_dominan, nilai, baseline_list):
     median_baseline = statistics.median(baseline_list) if baseline_list else 0
+    maksimum_baseline = max(baseline_list) if baseline_list else 0
     label = {
         "jumlah_koneksi": f"{int(nilai)} koneksi dalam satu window (baseline biasanya ~{int(median_baseline)})",
         "jumlah_port_unik": f"{int(nilai)} port berbeda disentuh dalam satu window",
         "jumlah_src_ip_unik": f"{int(nilai)} sumber IP berbeda menghubungi host ini",
-        "total_bytes_toserver": f"Transfer data {nilai/1_000_000:.1f} MB, jauh di atas kebiasaan",
+        "total_bytes_toserver": f"Transfer data {nilai/1_000_000:.1f} MB (baseline median ~{median_baseline/1_000_000:.2f} MB)",
         "jumlah_alert": f"{int(nilai)} alert Suricata terpicu",
         "rate_koneksi_per_menit": f"Rata-rata {nilai:.1f} koneksi/menit, pola tidak biasa",
     }
-    return label.get(fitur_dominan, f"{fitur_dominan}={nilai}")
+    pesan = label.get(fitur_dominan, f"{fitur_dominan}={nilai}")
+    if maksimum_baseline > 0 and nilai > maksimum_baseline:
+        rasio = nilai / maksimum_baseline
+        pesan += f" -- {rasio:.1f}x lipat dari maksimum yang pernah tercatat di baseline"
+    return pesan
 
 def hitung_skor_host(dest_ip, baseline_mulai, baseline_selesai,
                       window_sekarang_mulai, window_sekarang_selesai, window_menit=5):
@@ -151,9 +204,9 @@ def hitung_skor_host(dest_ip, baseline_mulai, baseline_selesai,
     event_sekarang = ambil_events(dest_ip, window_sekarang_mulai, window_sekarang_selesai)
     fitur_sekarang = hitung_fitur(event_sekarang, durasi_menit_sekarang)
 
-    percentiles = {f: percentile_rank(fitur_sekarang[f], distribusi[f]) for f in FITUR_LIST}
-    fitur_dominan = max(percentiles, key=percentiles.get)
-    skor = percentiles[fitur_dominan]
+    skor_per_fitur = {f: skor_dengan_magnitudo(fitur_sekarang[f], distribusi[f]) for f in FITUR_LIST}
+    fitur_dominan = max(skor_per_fitur, key=skor_per_fitur.get)
+    skor = skor_per_fitur[fitur_dominan]
 
     if skor >= 90:
         band = "Berisiko"
@@ -180,6 +233,10 @@ def main():
     parser.add_argument("--window-start", required=True, help="Window 'sekarang' yang mau dihitung skornya")
     parser.add_argument("--window-end", required=True)
     parser.add_argument("--window-minutes", type=int, default=5, help="Ukuran window baseline (menit)")
+    parser.add_argument("--exclude-ip", action="append", default=None,
+                         help="IP yang mau dikecualikan dari scoring (mis. gateway/router internal). "
+                              "Bisa dipakai berkali-kali buat lebih dari satu IP. Alamat non-unicast "
+                              "(multicast/broadcast/link-local) sudah otomatis dikecualikan.")
     args = parser.parse_args()
 
     baseline_mulai = parse_argumen_waktu(args.baseline_start)
@@ -187,7 +244,7 @@ def main():
     window_mulai = parse_argumen_waktu(args.window_start)
     window_selesai = parse_argumen_waktu(args.window_end)
 
-    hosts = get_all_hosts_seen(baseline_mulai, window_selesai)
+    hosts = get_all_hosts_seen(baseline_mulai, window_selesai, exclude_ips=args.exclude_ip)
     print(f"[scoring] Menghitung skor untuk {len(hosts)} host: {hosts}")
 
     for host in hosts:
