@@ -32,16 +32,33 @@ def parse_argumen_waktu(teks):
 
 
 def ip_layak_discore(ip_str):
+    """
+    True kalau ip_str pantas dihitung skornya sebagai host individual.
+
+    False buat alamat non-unicast (multicast, broadcast, link-local, loopback,
+    dll) -- alamat semacam ini secara alami punya pola traffic yang beda jauh
+    dari host biasa (mis. multicast discovery, broadcast ARP-like traffic),
+    jadi kalau ikut di-scoring bakal muncul terus sebagai "anomali" padahal
+    itu memang perilaku normalnya alamat tersebut.
+    """
     if not ip_str:
         return False
     try:
         ip_obj = ipaddress.ip_address(ip_str)
     except ValueError:
         return False
-    if ip_str == "255.255.255.255":
-        return False
     if (ip_obj.is_multicast or ip_obj.is_reserved or ip_obj.is_loopback
             or ip_obj.is_link_local or ip_obj.is_unspecified):
+        return False
+    if isinstance(ip_obj, ipaddress.IPv4Address) and ip_obj.packed[-1] == 255:
+        # Directed broadcast (mis. 192.168.242.255 di subnet /24) -- ini
+        # heuristik: dest_ip doang gak bawa info netmask aslinya, tapi
+        # oktet terakhir 255 hampir selalu broadcast di LAN pada umumnya
+        # (kasus paling umum: subnet /24 atau lebih kecil). Kalau di
+        # jaringan kamu ada host beneran yang IP-nya kebetulan diakhiri
+        # .255 di subnet custom lebih besar, kecualikan sebaliknya (jangan
+        # exclude) lewat perubahan manual di sini, atau lapor supaya
+        # heuristik ini dibikin sadar-netmask.
         return False
     return True
 
@@ -58,6 +75,22 @@ def ambil_events(dest_ip, start_dt, end_dt):
         return [dict(r) for r in cur.fetchall()]
 
 def get_all_hosts_seen(rentang_baseline, rentang_window, exclude_ips=None):
+    """
+    Scan host dari DUA rentang terpisah -- rentang baseline dan rentang
+    window "sekarang" -- lalu digabung (union).
+
+    Sebelumnya cuma discan SATU rentang gabungan (baseline_mulai s/d
+    window_selesai), dengan asumsi window selalu terjadi SETELAH baseline
+    secara kronologis. Kalau asumsi itu salah -- misalnya window/serangan
+    yang mau dicek terjadi jam 09:00 tapi baseline dibangun dari data jam
+    10:00 -- rentang gabungan itu jadi TERBALIK (start > end), dan query
+    "ts >= start AND ts <= end" gak pernah balikin baris sama sekali ->
+    0 host.
+
+    Dengan scan dua rentang terpisah (masing-masing selalu maju: mulai <=
+    selesai di rentangnya sendiri), urutan kronologis baseline vs window
+    gak lagi jadi asumsi yang harus dipegang.
+    """
     exclude_ips = set(exclude_ips or [])
     semua_ip = set()
     with db.db_cursor() as cur:
@@ -133,6 +166,11 @@ def percentile_rank(nilai, daftar_baseline):
 
 
 def mad_zscore(nilai, baseline_list):
+    """
+    Robust z-score pakai median & MAD (median absolute deviation), biar gak
+    gampang keganggu outlier yang mungkin udah ada di baseline itu sendiri.
+    Fallback ke stdev kalau MAD-nya nol (baseline terlalu homogen).
+    """
     if len(baseline_list) < 2:
         return 0.0
     median = statistics.median(baseline_list)
@@ -149,6 +187,19 @@ def mad_zscore(nilai, baseline_list):
 
 
 def skor_dengan_magnitudo(nilai, baseline_list):
+    """
+    Percentile rank standar, TAPI di-extend biar tetap peka ke magnitudo
+    begitu nilai ngelewatin maksimum yang pernah tercatat di baseline.
+
+    Tanpa ini, percentile_rank() mentok di 100 buat SEMUA nilai di atas
+    maksimum baseline -- gak peduli cuma dikit di atas (mis. 11 koneksi vs
+    maks baseline 10) atau jauh banget di atas (mis. 804.000 byte vs maks
+    baseline ~1.000 byte). Padahal dua kasus itu beda kelas bahaya.
+
+    Begitu nilai > maksimum baseline, ditambahin bonus log-scaled dari rasio
+    (nilai / maksimum baseline), jadi skor bisa lebih dari 100 dan makin
+    ekstrem rasionya, makin tinggi skornya (dibatasi biar gak meledak).
+    """
     persentil = percentile_rank(nilai, baseline_list)
     if not baseline_list:
         return persentil
@@ -207,8 +258,14 @@ def hitung_skor_host(dest_ip, baseline_mulai, baseline_selesai,
     fitur_sekarang = hitung_fitur(event_sekarang, durasi_menit_sekarang)
 
     skor_per_fitur = {f: skor_dengan_magnitudo(fitur_sekarang[f], distribusi[f]) for f in FITUR_LIST}
+    # Pilih fitur dominan pakai skor MENTAH (belum di-cap) -- ini yang bikin
+    # lonjakan ekstrem (mis. 804rb byte) tetap menang dibanding lonjakan
+    # tipis (mis. 11 vs maks 10) walau nanti tampilannya sama-sama <=100.
     fitur_dominan = max(skor_per_fitur, key=skor_per_fitur.get)
-    skor = skor_per_fitur[fitur_dominan]
+    # Skor yang ditampilkan/disimpan di-cap 100 (skala 0-100 yang gampang
+    # dibaca operator) -- bonus magnitudo di atas itu cuma dipakai internal
+    # buat milih fitur_dominan di atas, bukan buat nilai akhir.
+    skor = min(100.0, skor_per_fitur[fitur_dominan])
 
     if skor >= 90:
         band = "Berisiko"
