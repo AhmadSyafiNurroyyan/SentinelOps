@@ -1,28 +1,9 @@
-"""
-Mesin RAG SentinelOps: hybrid search (FAISS + BM25) digabung dengan
-Reciprocal Rank Fusion, lalu dijawab oleh Gemini dengan sitasi.
-
-Alur satu query:
-    1. Embed pertanyaan (Gemini) -> cari di FAISS (kedekatan makna)
-    2. Tokenisasi pertanyaan -> cari di BM25 (kecocokan kata)
-    3. Gabungkan dua peringkat dengan RRF
-    4. Ambil chunk unik teratas sebagai konteks
-    5. Kirim ke Gemini dengan system prompt -> jawaban + sumber
-
-Kenapa hybrid: FAISS unggul untuk pertanyaan bahasa alami, BM25 unggul
-untuk kode teknis eksak (SID, T-number) yang tidak punya makna semantik.
-RRF menggabungkan keduanya tanpa perlu menyetel bobot manual.
-"""
-
 import json
 import os
 import pickle
 
 import faiss
 import numpy as np
-
-# Redam peringatan informatif AFC dari library google-genai.
-# Ini bukan error; sistem tidak memakai function calling sama sekali.
 import logging
 logging.getLogger("google_genai.models").setLevel(logging.ERROR)
 
@@ -41,7 +22,6 @@ TOP_CONTEXT = 4     # chunk unik yang masuk ke prompt
 
 
 def tokenize(text):
-    """Sama persis dengan tokenizer di indexer, harus konsisten."""
     out, cur = [], []
     for ch in text.lower():
         if ch.isalnum():
@@ -55,18 +35,12 @@ def tokenize(text):
 
 
 def reciprocal_rank_fusion(faiss_ranks, bm25_ranks, k=RRF_K):
-    """
-    Gabung dua daftar peringkat jadi satu skor per entri.
-    Rumus: skor(d) = jumlah 1/(k + rank_d) untuk tiap daftar yang memuat d.
-    Peringkat mulai dari 0. Entri yang muncul di kedua daftar terangkat.
-    """
     scores = {}
     for rank, idx in enumerate(faiss_ranks):
         scores[idx] = scores.get(idx, 0.0) + 1.0 / (k + rank)
     for rank, idx in enumerate(bm25_ranks):
         scores[idx] = scores.get(idx, 0.0) + 1.0 / (k + rank)
     return sorted(scores, key=lambda i: scores[i], reverse=True)
-
 
 class RAGEngine:
     def __init__(self, client):
@@ -85,7 +59,6 @@ class RAGEngine:
         return vec
 
     def retrieve(self, query):
-        """Kembalikan chunk unik teratas hasil fusi FAISS + BM25."""
         # FAISS
         qvec = self._embed_query(query)
         _, faiss_idx = self.index.search(qvec, TOP_FAISS)
@@ -100,9 +73,6 @@ class RAGEngine:
 
         # Fusi
         fused = reciprocal_rank_fusion(faiss_ranks, bm25_ranks)
-
-        # Ambil chunk unik: dua entri (EN/ID) bisa menunjuk chunk sama,
-        # kita hanya mau satu wakil per chunk.
         seen, contexts = set(), []
         for idx in fused:
             e = self.entries[idx]
@@ -116,7 +86,6 @@ class RAGEngine:
         return contexts
 
     def answer(self, query):
-        """Retrieve lalu generate jawaban dengan sitasi."""
         import prompts
 
         contexts = self.retrieve(query)
@@ -128,9 +97,6 @@ class RAGEngine:
         )
 
         answer = resp.text.strip()
-
-        # Kalau LLM menolak karena di luar cakupan, jangan lampirkan sumber.
-        # Mencantumkan sumber untuk jawaban "tidak tahu" itu menyesatkan.
         REFUSAL = "tidak tersedia dalam basis pengetahuan"
         if REFUSAL in answer:
             return {"answer": answer, "sources": []}
@@ -149,7 +115,6 @@ class RAGEngine:
 
 
 def get_engine():
-    """Buat engine dengan client Gemini dari .env. Dipakai oleh main.py."""
     from google import genai
     from dotenv import load_dotenv
     load_dotenv()

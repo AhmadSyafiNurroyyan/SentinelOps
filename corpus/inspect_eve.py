@@ -1,19 +1,3 @@
-"""
-Periksa isi eve.json hasil laboratorium dan tarik daftar SID yang
-benar-benar terpicu.
-
-Jalankan dari root repo:
-    python corpus\\inspect_eve.py "path\\ke\\eve.json"
-
-Kalau path tidak diberikan, skrip memakai corpus/raw/eve.json.
-
-Output:
-    corpus/observed_sids.json   daftar SID yang muncul beserta jumlahnya
-
-Skrip ini menangani dua format: JSON Lines (satu objek per baris, format
-bawaan Suricata) maupun satu array JSON besar.
-"""
-
 import json
 import os
 import sys
@@ -25,7 +9,6 @@ OUT_PATH = os.path.join(HERE, "observed_sids.json")
 
 
 def load_events(path):
-    """Suricata menulis JSON Lines. Sebagian tool mengekspor sebagai array."""
     with open(path, encoding="utf-8", errors="replace") as f:
         head = f.read(2048).lstrip()
         f.seek(0)

@@ -1,23 +1,8 @@
-"""
-Model Pydantic untuk endpoint /ingest dan transformasi dari format
-Suricata (bersarang) ke format datar yang dipakai db.
-
-KONTRAK yang disepakati tim:
-    Log Shipper (Ryan) mengirim event Suricata APA ADANYA, bersarang.
-    Endpoint /ingest yang MERATAKAN sebelum masuk database.
-
-    Alasannya: shipper tetap sederhana, dan validasi terjadi di batas
-    sistem (endpoint), bukan tersebar. Data log adalah input tidak
-    tepercaya, jadi diperlakukan sebagai hostile dan divalidasi ketat.
-"""
-
 from typing import Optional
 
 from pydantic import BaseModel, Field
 
-
 class SuricataAlert(BaseModel):
-    """Bagian 'alert' pada event Suricata. Hanya ada di event_type=alert."""
     signature_id: Optional[int] = None
     signature: Optional[str] = None
     severity: Optional[int] = None
@@ -25,7 +10,6 @@ class SuricataAlert(BaseModel):
 
 
 class SuricataFlow(BaseModel):
-    """Bagian 'flow' pada event Suricata. Membawa volume byte."""
     bytes_toserver: int = 0
     bytes_toclient: int = 0
     pkts_toserver: int = 0
@@ -33,11 +17,6 @@ class SuricataFlow(BaseModel):
 
 
 class SuricataEvent(BaseModel):
-    """
-    Satu event mentah dari eve.json. Bentuk bersarang, sesuai keluaran
-    Suricata. Field yang tidak dikenal diabaikan supaya perubahan kecil
-    di Suricata tidak membuat ingest gagal total.
-    """
     model_config = {"extra": "ignore"}
 
     timestamp: str
@@ -51,15 +30,9 @@ class SuricataEvent(BaseModel):
 
 
 class IngestBatch(BaseModel):
-    """Batch event yang dikirim shipper dalam satu POST."""
     events: list[SuricataEvent] = Field(default_factory=list)
 
-
 def flatten(event: SuricataEvent) -> dict:
-    """
-    Ratakan satu event Suricata bersarang menjadi baris datar untuk db.
-    Ini satu-satunya tempat bentuk data berubah, sesuai kontrak.
-    """
     alert = event.alert or SuricataAlert()
     flow = event.flow or SuricataFlow()
     return {

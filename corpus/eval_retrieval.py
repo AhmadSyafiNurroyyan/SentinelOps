@@ -1,22 +1,3 @@
-"""
-Uji retrieval mesin RAG dengan 20 pertanyaan terukur.
-
-Tiga kelompok:
-    Kode eksak (5)   - menguji BM25: SID, technique ID
-    Konseptual (5)   - menguji FAISS: pertanyaan bahasa alami
-    Campuran (10)    - menguji RRF: gabungan keduanya
-
-Untuk tiap pertanyaan, sistem memeriksa apakah technique_id yang
-DIHARAPKAN muncul di antara chunk yang di-retrieve. Ini menguji
-retrieval (apakah dokumen yang benar terambil), bukan kualitas
-jawaban LLM.
-
-Jalankan dari root repo:
-    python corpus\\eval_retrieval.py
-
-Hasil dicetak ke layar dan ditulis ke docs/retrieval-eval.md.
-"""
-
 import os
 import sys
 
@@ -24,8 +5,6 @@ HERE = os.path.dirname(os.path.abspath(__file__))
 DOCS = os.path.join(HERE, "..", "docs")
 OUT = os.path.join(DOCS, "retrieval-eval.md")
 
-# (pertanyaan, technique_id yang diharapkan, kelompok)
-# Sesuaikan technique yang diharapkan bila corpus berubah.
 QUESTIONS = [
     # --- Kode eksak (BM25) ---
     ("Apa itu SID 1000001?", "T1046", "kode-eksak"),
@@ -78,8 +57,6 @@ def main():
     total = len(results)
     print()
     print(f"HASIL: {passed}/{total} lolos ({passed/total*100:.0f}%)")
-
-    # ringkasan per kelompok
     print()
     for g in ("kode-eksak", "konseptual", "campuran"):
         sub = [r for r in results if r["group"] == g]
@@ -92,7 +69,6 @@ def main():
     if passed < 16:
         print("\n[catat] Di bawah ambang Gate (16/20). Persempit atau")
         print("        perjelas corpus untuk chunk yang membingungkan.")
-
 
 def write_report(results, passed, total):
     os.makedirs(DOCS, exist_ok=True)

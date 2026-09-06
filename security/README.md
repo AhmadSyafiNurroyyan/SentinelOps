@@ -1,88 +1,126 @@
-## **1\. Topologi Lab**
+# Validasi Keamanan dan Skenario Pengujian
 
-| Peran | IP | Keterangan |
-| :---- | :---- | :---- |
-| Attacker | 192.168.242.131 | Sumber semua traffic serangan & baseline |
-| VM Utama (server) | 192.168.242.130 | Suricata, memantau 2 interface (ens33 & lxdbr0), http\_server |
-| Host LXD 1 | 10.163.202.50 | Container di belakang lxdbr0 |
-| Host LXD 2 | 10.163.202.51 | Container di belakang lxdbr0 |
-| Host LXD 3 | 10.163.202.52 | Container di belakang lxdbr0 |
+Dokumen ini menyajikan metodologi validasi SentinelOps pada lingkungan
+laboratorium terisolasi. Pengujian dirancang untuk menunjukkan dua kemampuan
+utama sistem:
 
-Suricata dikonfigurasi memantau **dua interface sekaligus** (`ens33` dan `lxdbr0`) supaya traffic ke VM utama maupun ke ketiga host LXD sama-sama tertangkap dalam satu **`eve.json`**.
+1. mengidentifikasi aktivitas yang terdeteksi oleh signature Suricata; dan
+2. menemukan anomali perilaku yang tidak menghasilkan alert signature, tetapi
+   menyimpang dari baseline traffic normal.
 
-## **2\. Timeline Pengumpulan Data**
+Seluruh data pengujian berasal dari infrastruktur milik tim dan digunakan
+khusus untuk validasi prototipe. Tidak ada sistem produksi atau jaringan pihak
+ketiga yang menjadi target.
 
-| Tahap | Waktu (UTC) | Tools/Script |
-| ----- | ----- | ----- |
-| Baseline (traffic normal) | **±4 jam kontinu (**bisa dilihat di *benign\_runtime.log*) | `generate_benign.py` |
-| Skenario 1 — SYN scan | 2026-08-29 14:49:27 – 14:51:05 | `nmap -sS -p- -T4` |
-| Skenario 2 — NULL scan | 2026-08-29 14:51:11 – 14:51:44 | `nmap -sN -p- -T4` |
-| Skenario 3 — Brute force SSH | 2026-08-29 14:51:49 – 14:52:04 | `hydra -l benign -P wordlist.txt` |
-| Skenario 4 — Transfer volume besar | 2026-08-29 14:52:12 – 14:52:39 | `scp bigfile.bin` (\~210MB) |
+## 1. Topologi laboratorium
 
-* Perintah menjalankan *generate\_benign.py* untuk log baseline:
+| Peran | Alamat IP | Keterangan |
+| :--- | :--- | :--- |
+| Attacker | `192.168.242.131` | Sumber traffic baseline dan skenario serangan |
+| VM utama | `192.168.242.130` | Menjalankan Suricata dan HTTP server |
+| Host LXD 1 | `10.163.202.50` | Host yang dipantau di belakang `lxdbr0` |
+| Host LXD 2 | `10.163.202.51` | Host yang dipantau di belakang `lxdbr0` |
+| Host LXD 3 | `10.163.202.52` | Host yang dipantau di belakang `lxdbr0` |
 
-python3 generate\_benign\_final.py \\
+Suricata memantau interface `ens33` dan `lxdbr0`. Dengan konfigurasi tersebut,
+traffic menuju VM utama maupun ketiga host LXD direkam dalam satu aliran
+`eve.json` untuk diproses oleh SentinelOps.
 
-  \--targets 10.163.202.50,10.163.202.51,10.163.202.52,192.168.242.130 \\
+## 2. Rancangan dan kronologi pengujian
 
-  \--http-targets 192.168.242.130 \\
+Baseline traffic normal dikumpulkan selama kurang lebih empat jam menggunakan
+`generate_benign.py`. Baseline ini menjadi pembanding bagi scoring statistik.
+Empat skenario kemudian dijalankan pada urutan dan waktu berikut (UTC):
 
-  \--ssh-user benign \--ssh-pass Benign123x \\
+| Tahap | Waktu | Aktivitas |
+| :--- | :--- | :--- |
+| Baseline | ±4 jam kontinu | Traffic normal terkontrol |
+| Skenario 1 | 2026-08-29 14:49:27–14:51:05 | SYN scan dengan `nmap -sS -p- -T4` |
+| Skenario 2 | 2026-08-29 14:51:11–14:51:44 | NULL scan dengan `nmap -sN -p- -T4` |
+| Skenario 3 | 2026-08-29 14:51:49–14:52:04 | Percobaan autentikasi SSH berulang dengan Hydra |
+| Skenario 4 | 2026-08-29 14:52:12–14:52:39 | Transfer file sekitar 210 MB melalui SCP |
 
-  \--min-interval 5 \--max-interval 20 \\
+Wrapper `run_scenario.sh` mencatat nama skenario, waktu mulai dan selesai,
+perintah yang dijalankan, serta exit code ke `scenario_log.csv`. Pencatatan ini
+menyediakan jejak audit yang dapat diperiksa ulang oleh dewan juri.
 
-  \--duration-hours 4
+## 3. Sumber dan skema data
 
-* Semua waktu eksekusi persis (termasuk command lengkap & exit code) tercatat otomatis di **`scenario_log.csv`** lewat wrapper **`run_scenario.sh`**.
+### `eve.json`
 
-## **3\. Skema Data**
+Log native Suricata dengan satu objek JSON per baris. Event yang digunakan
+SentinelOps meliputi:
 
-**`eve.json`** (native Suricata, satu JSON per baris). Tipe event yang relevan:
+- `flow`: ringkasan koneksi, alamat IP, port, dan jumlah bytes;
+- `alert`: signature Suricata yang terpicu;
+- `anomaly`: anomali pada protokol atau application layer; dan
+- `ssh`, `dns`, serta `stats`: konteks pendukung analisis.
 
-* `flow` — ringkasan koneksi (src/dest IP, port, bytes, tcp\_flags, waktu mulai/selesai)  
-* `alert` — signature yang terpicu (lihat tabel SID di bawah)  
-* `anomaly` — anomali protokol level app-layer  
-* `ssh`, `dns`, `stats` — event pendukung/kontekstual
+### Ground truth dan audit trail
 
-**`benign_ground_truth.csv`** — kolom: `timestamp_utc, activity, target, result, detail`. Log independen dari sisi attacker, dipakai untuk validasi periode baseline (ketika trafik normal gk ada serangan).
+- `benign_ground_truth.csv` mencatat aktivitas baseline dari sisi attacker
+  dengan kolom `timestamp_utc`, `activity`, `target`, `result`, dan `detail`.
+- `scenario_log.csv` mencatat eksekusi keempat skenario dengan kolom
+  `scenario`, `start_utc`, `end_utc`, `command`, dan `exit_code`.
 
-**`scenario_log.csv`** — kolom: `scenario, start_utc, end_utc, command, exit_code`. Satu file gabungan untuk keempat skenario.
+Kombinasi log Suricata, ground truth, dan audit trail memungkinkan hasil
+deteksi dibandingkan dengan aktivitas yang memang sengaja dilakukan.
 
-## **4\. Bukti Verifikasi per Skenario**
+## 4. Hasil verifikasi
 
-| Skenario | Bukti di `eve.json` |
-| ----- | ----- |
-| 1 — SYN scan | 65.535 port unik disentuh ke masing-masing 3 host LXD; \~56.156 port ke VM utama (lihat catatan keterbatasan). Alert **SID 1000001**. |
-| 2 — NULL scan | 73.212 flow dengan `tcp_flags: "00"` (flag kosong \= ciri khas NULL scan) ke VM utama |
-| 3 — Brute force SSH | Alert **SID 2260002** & anomaly `invalid_banner` / `APPLAYER_DETECT_PROTOCOL_ONLY_ONE_DIRECTION`, konsisten dengan pola koneksi SSH otomatis cepat berturut-turut. Hydra melaporkan 1 password valid ditemukan (`Benign123x`, baris terakhir wordlist — password ini sengaja diketahui untuk keperluan lab). |
-| 4 — Transfer volume besar | 1 flow dengan `bytes_toserver: 219.730.171` (\~210MB), **`alerted: false`** — bukti bahwa Suricata (signature-based) TIDAK menandai transfer ini sebagai mencurigakan, walau volumenya jauh di atas baseline. Ini bukti inti "anti-redundansi vs Suricata". |
+| Skenario | Bukti pada log | Interpretasi |
+| :--- | :--- | :--- |
+| SYN scan | Hingga 65.535 port unik disentuh pada masing-masing host LXD dan sekitar 56.156 port pada VM utama. Alert `SID 1000001` terpicu. | Aktivitas terdeteksi oleh signature dan terlihat sebagai pola pemindaian port. |
+| NULL scan | Terdapat 73.212 flow dengan `tcp_flags: "00"` menuju VM utama. | Pola flag kosong konsisten dengan karakteristik NULL scan. |
+| Brute force SSH | Alert `SID 2260002`, anomaly `invalid_banner`, dan `APPLAYER_DETECT_PROTOCOL_ONLY_ONE_DIRECTION`. | Rangkaian koneksi SSH cepat berulang teridentifikasi sebagai aktivitas autentikasi mencurigakan. |
+| Transfer volume besar | Satu flow memiliki `bytes_toserver: 219.730.171` (sekitar 210 MB) dengan `alerted: false`. | Suricata tidak memicu signature, sedangkan SentinelOps dapat menilai penyimpangan volume terhadap baseline melalui statistical scoring. |
 
-### **Daftar Signature ID yang terpicu (referensi wajib untuk corpus RAG)**
+Skenario keempat merupakan validasi utama pendekatan **beyond-signature**:
+SentinelOps tidak menggantikan Suricata, tetapi melengkapi titik buta yang tidak
+dapat ditangani oleh signature IDS saja.
 
-| SID | Signature | Kategori | Skenario terkait | Saran mapping ATT\&CK |
-| ----- | ----- | ----- | ----- | ----- |
-| 1000001 | Potential TCP Port Scan Detected | — | 1, 2 | T1595 – Active Scanning |
-| 2210063 | SURICATA STREAM 3way handshake excessive different SYNs | Generic Protocol Command Decode | 1, 2 | T1595 – Active Scanning |
-| 2260002 | SURICATA Applayer Detect protocol only one direction | Generic Protocol Command Decode | 3 | T1110 – Brute Force |
+## 5. Signature yang digunakan dalam corpus RAG
 
-***Penting untuk ANCA:** corpus RAG harus punya penjelasan untuk ketiga SID ini secara eksplisit, karena inilah yang akan muncul kalau chatbot ditanya soal insiden di demo.*
+| SID | Signature | Skenario | Pemetaan ATT&CK |
+| :--- | :--- | :--- | :--- |
+| `1000001` | Potential TCP Port Scan Detected | SYN scan, NULL scan | `T1595 – Active Scanning` |
+| `2210063` | SURICATA STREAM 3way handshake excessive different SYNs | SYN scan, NULL scan | `T1595 – Active Scanning` |
+| `2260002` | SURICATA Applayer Detect protocol only one direction | Brute force SSH | `T1110 – Brute Force` |
 
-## **5\. Keterbatasan Jujur (untuk transparansi, bukan disembunyikan)**
+Ketiga SID tersebut dipetakan secara eksplisit ke corpus agar Virtual SOC
+Analyst dapat memberikan interpretasi dan sitasi yang relevan ketika temuan
+ditanyakan melalui chatbot.
 
-* Port unik yang tercatat ke VM utama (\~56.156) tidak genap 65.535 seperti 3 host LXD lainnya. Kemungkinan penyebab: sebagian kecil flow closure belum sempat di-log Suricata pada saat file di-export (lihat catatan delay di atas). Tidak mempengaruhi validitas alert port-scan yang sudah terkonfirmasi terpicu.  
-* Password SSH (`Benign123x`) sengaja diketahui sebelumnya (bukan brute force buta murni) karena akun `benign` ini juga dipakai untuk baseline traffic. Wordlist tetap berisi \~19 tebakan salah sebelum password asli, untuk mensimulasikan pola percobaan berulang.  
-* Dataset ini dihasilkan murni dari lab isolated milik tim sendiri (VMware \+ LXD), bukan dataset publik — keputusan ini diambil sejak awal untuk menghindari masalah kompatibilitas skema antara `eve.json` dan dataset flow-based publik (mis. CICIDS2017). Dan sudah cukup juga sih ngambil sendiri
+## 6. Keterbatasan dan transparansi
 
-## **6\. Inventaris File**
+- Jumlah port yang tercatat pada VM utama tidak mencapai 65.535 seperti pada
+  host LXD lain. Perbedaan ini kemungkinan disebabkan sebagian flow closure
+  belum tertulis saat log diekspor; alert port scan tetap terkonfirmasi.
+- Password SSH pada skenario brute force diketahui untuk kebutuhan lab.
+  Wordlist tetap memuat sekitar 19 percobaan gagal sebelum kredensial yang
+  benar, sehingga pola koneksi berulang dapat divalidasi tanpa menyerang
+  sistem eksternal.
+- Dataset dibuat dari lab VMware dan LXD milik tim, bukan dataset publik.
+  Pilihan ini menjaga kesesuaian antara skema `eve.json`, topologi, dan ground
+  truth yang digunakan SentinelOps.
 
-| File | Isi |
-| ----- | ----- |
-| `eve_attack_scenario.json.gz` | Log Suricata lengkap tervalidasi, mencakup baseline \+ 4 skenario |
-| `benign_ground_truth.csv` | Log aktivitas baseline dari sisi attacker |
-| `scenario_log.csv benign_runtime.log` | Waktu eksekusi \+ command persis tiap skenario serangan |
-| `scenario1_synscan.txt` & scenario2\_nullscan | Output mentah tiap tool serangan |
-| `generate_benign.py` | Script generator traffic baseline |
-| `run_scenario.sh` | Wrapper pencatat waktu eksekusi skenario |
-| `wordlist.txt` | Wordlist untuk skenario brute force |
+Keterbatasan tersebut dicatat sebagai bagian dari validasi, bukan dihilangkan
+dari pelaporan hasil.
 
+## 7. Inventaris artefak
+
+| Artefak | Fungsi |
+| :--- | :--- |
+| `eve_attack_scenario.json.gz` | Arsip log Suricata baseline dan seluruh skenario |
+| `benign_ground_truth.csv` | Ground truth aktivitas traffic normal |
+| `scenario_log.csv` | Jejak audit waktu dan perintah setiap skenario |
+| `benign_runtime.log` | Log eksekusi generator baseline |
+| `scenario1_synscan.txt` | Output mentah SYN scan |
+| `scenario2_nullscan.txt` | Output mentah NULL scan |
+| `generate_benign.py` | Generator traffic baseline |
+| `run_scenario.sh` | Pencatat eksekusi skenario |
+| `scenarios/assets/demo_wordlist.txt` | Wordlist terkontrol untuk skenario SSH |
+
+Artefak log berukuran besar dan data runtime tidak dilacak Git secara default.
+Arsip hasil pengujian dapat disediakan sebagai bahan demonstrasi atau
+verifikasi lanjutan.

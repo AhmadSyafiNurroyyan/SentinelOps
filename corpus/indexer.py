@@ -1,23 +1,3 @@
-"""
-Bangun index pencarian dari corpus/chunks.json.
-
-Menghasilkan dua index yang saling melengkapi:
-    faiss_index/          pencarian vektor (kedekatan makna)
-    bm25_index.pkl        pencarian kata kunci (kecocokan token persis)
-
-Setiap chunk menghasilkan DUA entri: satu untuk teks Inggris (`text`)
-dan satu untuk ringkasan Indonesia (`text_id`). Keduanya menunjuk balik
-ke chunk yang sama lewat chunk_id. Dengan begitu pertanyaan berbahasa
-Indonesia cocok ke entri Indonesia, pertanyaan Inggris cocok ke entri
-Inggris, dan hasilnya sama-sama mengarah ke chunk yang tepat.
-
-Embedding memakai API Gemini, bukan model lokal. Ini menjaga kebutuhan
-RAM tetap kecil (tanpa PyTorch) dan tidak menambah dependensi berat.
-
-Pemakaian:
-    python corpus\\indexer.py
-"""
-
 import json
 import os
 import pickle
@@ -37,9 +17,7 @@ BM25_PATH = os.path.join(HERE, "..", "bm25_index.pkl")
 
 EMBED_MODEL = "gemini-embedding-001"
 
-
 def tokenize(text):
-    """Tokenisasi sederhana untuk BM25: huruf kecil, pisah non-alfanumerik."""
     out, cur = [], []
     for ch in text.lower():
         if ch.isalnum():
@@ -51,9 +29,7 @@ def tokenize(text):
         out.append("".join(cur))
     return out
 
-
 def embed_texts(client, texts):
-    """Embed daftar teks lewat Gemini, satu per satu dengan jeda aman."""
     vectors = []
     for i, t in enumerate(texts, 1):
         resp = client.models.embed_content(model=EMBED_MODEL, contents=t)
@@ -62,7 +38,6 @@ def embed_texts(client, texts):
         time.sleep(0.5)
     print()
     return np.array(vectors, dtype="float32")
-
 
 def main():
     if not os.path.exists(CHUNKS_PATH):
@@ -73,7 +48,6 @@ def main():
     chunks = json.load(open(CHUNKS_PATH, encoding="utf-8"))
     print(f"[baca]  {len(chunks)} chunk dari corpus")
 
-    # Bangun dua entri per chunk: Inggris dan Indonesia.
     entries = []   # metadata tiap vektor
     texts = []     # teks yang diembed
     corpus_tokens = []  # untuk BM25
@@ -113,7 +87,6 @@ def main():
     dim = vectors.shape[1]
     print(f"[ok]    Dimensi vektor: {dim}")
 
-    # FAISS: normalkan lalu inner product = cosine similarity.
     faiss.normalize_L2(vectors)
     index = faiss.IndexFlatIP(dim)
     index.add(vectors)
@@ -123,7 +96,6 @@ def main():
     json.dump(entries, open(META_PATH, "w", encoding="utf-8"),
               ensure_ascii=False, indent=2)
 
-    # BM25: simpan model dan token, plus entries agar hasil bisa dipetakan.
     bm25 = BM25Okapi(corpus_tokens)
     with open(BM25_PATH, "wb") as f:
         pickle.dump({"bm25": bm25, "entries": entries,
@@ -138,7 +110,6 @@ def main():
 
 
 def quick_test(query):
-    """Uji retrieval sederhana tanpa RRF, sekadar memastikan index jalan."""
     import pickle as pk
     data = pk.load(open(BM25_PATH, "rb"))
     bm25, entries = data["bm25"], data["entries"]
@@ -148,7 +119,6 @@ def quick_test(query):
     for i in ranked[:4]:
         e = entries[i]
         print(f"  {scores[i]:.2f}  [{e['lang']}] {e['technique_id']} {e['name']}")
-
 
 if __name__ == "__main__":
     if len(sys.argv) > 2 and sys.argv[1] == "--test":

@@ -1,28 +1,3 @@
-"""
-Bangun corpus RAG dwibahasa dari technique ATT&CK dan pemetaan SID.
-
-Menggabungkan:
-    corpus/attack_techniques.json   deskripsi, mitigasi, deteksi (Inggris)
-    corpus/sid_mapping.json         SID yang terkonfirmasi dari lab
-
-Menghasilkan:
-    corpus/chunks.json              satu chunk per technique, dwibahasa
-
-Tiap chunk punya field `text` (Inggris, dari ATT&CK) dan `text_id`
-(ringkasan Bahasa Indonesia hasil Gemini). Keduanya nanti diindeks,
-supaya BM25 bisa mencocokkan pertanyaan berbahasa Indonesia. Tanpa ini,
-BM25 hampir selalu gagal karena token Inggris tidak cocok dengan query
-Indonesia.
-
-Cache: ringkasan Indonesia disimpan di corpus/.summary_cache.json supaya
-menjalankan ulang skrip tidak memanggil API berulang dan tidak membakar
-kuota.
-
-Pemakaian:
-    python corpus\\build_corpus.py            # panggil Gemini sungguhan
-    python corpus\\build_corpus.py --dry-run  # tanpa API, cek logika dulu
-"""
-
 import argparse
 import json
 import os
@@ -37,27 +12,22 @@ CACHE_PATH = os.path.join(HERE, ".summary_cache.json")
 
 SUMMARY_MODEL = "gemini-2.5-flash"
 
-
 def load_json(path):
     if not os.path.exists(path):
         print(f"[gagal] Tidak ada {path}", file=sys.stderr)
         sys.exit(1)
     return json.load(open(path, encoding="utf-8"))
 
-
 def load_cache():
     if os.path.exists(CACHE_PATH):
         return json.load(open(CACHE_PATH, encoding="utf-8"))
     return {}
 
-
 def save_cache(cache):
     json.dump(cache, open(CACHE_PATH, "w", encoding="utf-8"),
               ensure_ascii=False, indent=2)
 
-
 def build_english_text(tech, sids):
-    """Rakit teks Inggris satu chunk dari data ATT&CK dan SID terkait."""
     parts = [f"{tech['name']} ({tech['technique_id']}).", tech["description"]]
 
     if tech.get("mitigations"):
@@ -75,9 +45,7 @@ def build_english_text(tech, sids):
 
     return " ".join(parts)
 
-
 def summarize_id(client, text, technique_name):
-    """Minta ringkasan Bahasa Indonesia 2-3 kalimat dari teks Inggris."""
     prompt = (
         "Ringkas teks keamanan siber berikut ke dalam Bahasa Indonesia yang "
         "jelas, 2 sampai 3 kalimat, untuk staf IT sekolah yang bukan ahli "
@@ -103,7 +71,6 @@ def main():
     sid_mapping = load_json(SID_PATH)
     cache = load_cache()
 
-    # Kelompokkan SID per technique. Lewati yang benign (technique_id null).
     sids_by_tech = {}
     for s in sid_mapping:
         tid = s.get("technique_id")
@@ -129,7 +96,6 @@ def main():
         sids = sids_by_tech.get(tid, [])
         text_en = build_english_text(tech, sids)
 
-        # Ringkasan Indonesia: cek cache dulu.
         if text_en in cache:
             text_id = cache[text_en]
             source = "cache"
@@ -142,7 +108,7 @@ def main():
             save_cache(cache)
             api_calls += 1
             source = "api"
-            time.sleep(1.5)  # jeda supaya tidak kena limit per menit
+            time.sleep(1.5)  
 
         chunk = {
             "chunk_id": f"tech_{tid.lower()}",

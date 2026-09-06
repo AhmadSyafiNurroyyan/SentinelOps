@@ -1,20 +1,3 @@
-"""
-Skema dan akses database SQLite untuk SentinelOps.
-
-Tiga tabel:
-    events  - event mentah yang dikirim Log Shipper dari eve.json
-    hosts   - agregat per host, diperbarui saat scoring dihitung
-    scores  - riwayat skor per host, untuk grafik tren di dashboard
-
-Aturan wajib:
-    Semua query PARAMETERIZED. Tidak pernah merangkai SQL dengan
-    penggabungan string. Kita membangun produk keamanan, dan SQL
-    injection di kode sendiri akan meruntuhkan seluruh pitch.
-
-Jalankan langsung untuk membuat/memastikan skema:
-    python api\\db.py
-"""
-
 import os
 import sqlite3
 from contextlib import contextmanager
@@ -69,7 +52,6 @@ CREATE INDEX IF NOT EXISTS idx_scores_ip ON scores(ip);
 
 
 def get_connection():
-    """Koneksi baru. row_factory supaya hasil bisa diakses seperti dict."""
     conn = sqlite3.connect(DB_PATH)
     conn.row_factory = sqlite3.Row
     conn.execute("PRAGMA foreign_keys = ON")
@@ -78,7 +60,6 @@ def get_connection():
 
 @contextmanager
 def db_cursor():
-    """Context manager: commit otomatis kalau sukses, rollback kalau gagal."""
     conn = get_connection()
     try:
         yield conn.cursor()
@@ -91,19 +72,10 @@ def db_cursor():
 
 
 def init_db():
-    """Buat semua tabel kalau belum ada. Aman dijalankan berulang."""
     with db_cursor() as cur:
         cur.executescript(SCHEMA)
 
-
-# ---------- events ----------
-
 def insert_events(rows):
-    """
-    Simpan batch event. rows berupa list of dict.
-    Dipakai oleh endpoint /ingest.
-    Query parameterized, aman dari injection.
-    """
     sql = """
         INSERT INTO events
             (ts, event_type, src_ip, dest_ip, dest_port, proto,
@@ -115,13 +87,9 @@ def insert_events(rows):
     with db_cursor() as cur:
         cur.executemany(sql, rows)
         return cur.rowcount
-
-
-# ---------- hosts ----------
-
+    
 def upsert_host(ip, risk_score, band, baseline_status, total_events,
                 reason='', first_seen=None, last_seen=None):
-    """Buat atau perbarui satu host. Dipakai setelah scoring dihitung."""
     sql = """
         INSERT INTO hosts (ip, first_seen, last_seen, risk_score, band,
                            reason, baseline_status, total_events, updated_at)
@@ -144,9 +112,7 @@ def upsert_host(ip, risk_score, band, baseline_status, total_events,
     with db_cursor() as cur:
         cur.execute(sql, params)
 
-
 def get_hosts():
-    """Semua host, diurutkan dari skor tertinggi. Dipakai GET /assets."""
     with db_cursor() as cur:
         cur.execute(
             "SELECT ip, risk_score, band, reason, baseline_status, "
@@ -156,7 +122,6 @@ def get_hosts():
 
 
 def get_host(ip):
-    """Satu host beserta riwayat skornya. Dipakai GET /assets/{ip}."""
     with db_cursor() as cur:
         cur.execute("SELECT * FROM hosts WHERE ip = ?", (ip,))
         host = cur.fetchone()
@@ -172,17 +137,12 @@ def get_host(ip):
         result["trend"] = trend
         return result
 
-
-# ---------- scores ----------
-
 def record_score(ip, risk_score, band):
-    """Catat satu titik skor ke riwayat. Dipakai untuk grafik tren."""
     with db_cursor() as cur:
         cur.execute(
             "INSERT INTO scores (ip, risk_score, band) VALUES (?, ?, ?)",
             (ip, risk_score, band),
         )
-
 
 if __name__ == "__main__":
     init_db()
