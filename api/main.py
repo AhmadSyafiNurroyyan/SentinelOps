@@ -28,6 +28,9 @@ try:
 except Exception as exc:
     _rag_error = str(exc)
 
+@app.get("/")
+def root():
+    return {"message": "SentinelOps API", "version": "0.1.0"}
 
 @app.get("/health")
 def health():
