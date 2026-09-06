@@ -29,6 +29,15 @@ app = FastAPI(
     version="0.1.0",
 )
 
+from fastapi.middleware.cors import CORSMiddleware
+
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["*"],   # untuk pengembangan; saat produksi ganti ke domain frontend
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
+
 # Pastikan skema ada sejak modul dimuat, sebelum request pertama masuk.
 db.init_db()
 
