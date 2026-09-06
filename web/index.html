@@ -8,7 +8,6 @@
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&family=JetBrains+Mono:wght@400;500&family=Space+Grotesk:wght@500;600;700&display=swap" rel="stylesheet">
 <style>
-/* ── Token Nocturne (dipakai lewat var(--*)) ───────────────────────── */
 :root {
   --color-bg: #161826;
   --color-surface: #232532;
@@ -61,11 +60,9 @@ button:focus-visible, a:focus-visible, input:focus-visible { outline:2px solid v
 <script type="text/babel">
 const { useState, useEffect, useCallback, useRef } = React;
 
-/* ── Ganti satu baris ini saat deploy ─────────────────────────────── */
 const API = "http://localhost:8000";
 const REFRESH_SECONDS = 60;
 
-/* ── Tiga warna status, konsisten di seluruh aplikasi ─────────────── */
 const STATUS = {
   "Aman":      { color: "#5fae86", tint: "#1e2f28" },
   "Perhatian": { color: "#d3ac5c", tint: "#302819" },
@@ -74,7 +71,6 @@ const STATUS = {
 const bandOf = (b) => STATUS[b] || STATUS["Aman"];
 const MONO = "var(--font-mono)";
 
-/* ── Data contoh: dipakai hanya kalau API tidak terjangkau ────────── */
 const SAMPLE_ASSETS = { hosts: [
   { ip:"192.168.1.10", risk_score:78, band:"Berisiko",  reason:"804 koneksi dalam satu window (baseline biasanya ~1)", baseline_status:"sufficient",   last_seen:"2 menit lalu" },
   { ip:"192.168.1.44", risk_score:71, band:"Berisiko",  reason:"Port scan terdeteksi ke 128 port berbeda",             baseline_status:"sufficient",   last_seen:"4 menit lalu" },
@@ -113,7 +109,6 @@ const SAMPLE_CHAT = {
   ],
 };
 
-/* ── Teks kaya: paragraf, tebal, poin ────────────────────────────── */
 function RichText({ text }) {
   const blocks = String(text || "").split("\n").map(l => l.trim()).filter(Boolean).map(raw => {
     const isLi = /^[-*\u2022]\s+/.test(raw);
@@ -138,7 +133,6 @@ function RichText({ text }) {
   );
 }
 
-/* ── Sidebar tetap ───────────────────────────────────────────────── */
 function Sidebar({ page, setPage, hasHost, sample }) {
   const items = [
     { key:"dashboard", label:"Dashboard Aset" },

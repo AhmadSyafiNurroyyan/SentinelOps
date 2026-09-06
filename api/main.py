@@ -1,4 +1,6 @@
+import os
 from fastapi import FastAPI, HTTPException
+from fastapi.responses import FileResponse
 from pydantic import BaseModel
 from fastapi import Depends
 from . import security
@@ -28,6 +30,13 @@ try:
 except Exception as exc:
     _rag_error = str(exc)
 
+
+@app.get("/")
+def serve_frontend():
+    html_path = os.path.join(os.path.dirname(__file__), "..", "web", "index.html")
+    if os.path.exists(html_path):
+        return FileResponse(html_path)
+    return {"message": "Frontend not found"}
 
 @app.get("/health")
 def health():
