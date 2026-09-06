@@ -1,615 +1,1740 @@
-<!DOCTYPE html>
+<!doctype html>
 <html lang="id">
-<head>
-<meta charset="utf-8">
-<meta name="viewport" content="width=device-width, initial-scale=1">
-<title>PhagOS — Analis SOC Virtual</title>
-<link rel="preconnect" href="https://fonts.googleapis.com">
-<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&family=JetBrains+Mono:wght@400;500&family=Space+Grotesk:wght@500;600;700&display=swap" rel="stylesheet">
-<style>
-/* ── Token Nocturne (dipakai lewat var(--*)) ───────────────────────── */
-:root {
-  --color-bg: #161826;
-  --color-surface: #232532;
-  --color-text: #e9e9ed;
-  --color-accent: #9184d9;
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>PhagOS — Analis SOC Virtual</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&family=JetBrains+Mono:wght@400;500&family=Space+Grotesk:wght@500;600;700&display=swap"
+      rel="stylesheet"
+    />
+    <style>
+      /* ── Token Nocturne (dipakai lewat var(--*)) ───────────────────────── */
+      :root {
+        --color-bg: #161826;
+        --color-surface: #232532;
+        --color-text: #e9e9ed;
+        --color-accent: #9184d9;
 
-  --color-neutral-100:#f3f5fe; --color-neutral-200:#e4e7f5; --color-neutral-300:#cfd3e5;
-  --color-neutral-400:#b2b6ca; --color-neutral-500:#9397ab; --color-neutral-600:#75798c;
-  --color-neutral-700:#595d6c; --color-neutral-800:#3f424d; --color-neutral-900:#292b31;
+        --color-neutral-100: #f3f5fe;
+        --color-neutral-200: #e4e7f5;
+        --color-neutral-300: #cfd3e5;
+        --color-neutral-400: #b2b6ca;
+        --color-neutral-500: #9397ab;
+        --color-neutral-600: #75798c;
+        --color-neutral-700: #595d6c;
+        --color-neutral-800: #3f424d;
+        --color-neutral-900: #292b31;
 
-  --color-accent-100:#f5f4ff; --color-accent-200:#e7e5fe; --color-accent-300:#d2cefd;
-  --color-accent-400:#b5abfc; --color-accent-500:#968ae0; --color-accent-600:#796cbf;
-  --color-accent-700:#5d5294; --color-accent-800:#423a6a; --color-accent-900:#2b2741;
+        --color-accent-100: #f5f4ff;
+        --color-accent-200: #e7e5fe;
+        --color-accent-300: #d2cefd;
+        --color-accent-400: #b5abfc;
+        --color-accent-500: #968ae0;
+        --color-accent-600: #796cbf;
+        --color-accent-700: #5d5294;
+        --color-accent-800: #423a6a;
+        --color-accent-900: #2b2741;
 
-  --font-heading: "Space Grotesk", system-ui, sans-serif;
-  --font-heading-weight: 500;
-  --font-body: "Inter", system-ui, sans-serif;
-  --font-mono: "JetBrains Mono", ui-monospace, monospace;
+        --font-heading: "Space Grotesk", system-ui, sans-serif;
+        --font-heading-weight: 500;
+        --font-body: "Inter", system-ui, sans-serif;
+        --font-mono: "JetBrains Mono", ui-monospace, monospace;
 
-  --space-1:2.8px; --space-2:5.6px; --space-3:8.4px; --space-4:11.2px; --space-6:16.8px; --space-8:22.4px;
-  --radius-sm:4px; --radius-md:8px; --radius-lg:14px;
+        --space-1: 2.8px;
+        --space-2: 5.6px;
+        --space-3: 8.4px;
+        --space-4: 11.2px;
+        --space-6: 16.8px;
+        --space-8: 22.4px;
+        --radius-sm: 4px;
+        --radius-md: 8px;
+        --radius-lg: 14px;
 
-  --shadow-sm: 0 0 0 1px #3f424d;
-  --shadow-md: 0 0 0 1px #595d6c, 0 6px 18px rgba(0,0,0,0.55);
-  --shadow-lg: 0 0 0 1px #9397ab, 0 16px 40px rgba(0,0,0,0.65);
-}
-html, body { margin:0; padding:0; background:var(--color-bg); color:var(--color-text); font-family:var(--font-body); }
-* { box-sizing: border-box; }
-a { color: var(--color-accent-300); text-decoration: none; }
-a:hover { color: var(--color-accent-200); }
-button:focus-visible, a:focus-visible, input:focus-visible { outline:2px solid var(--color-accent); outline-offset:2px; }
-::selection { background: var(--color-accent-800); }
-::-webkit-scrollbar { width:10px; height:10px; }
-::-webkit-scrollbar-thumb { background:#3f424d; border-radius:8px; }
-::-webkit-scrollbar-track { background:transparent; }
-.row-click:hover { background:#292b31; }
-.nav-item:hover { background:#232532; color:#e9e9ed; }
-.chip:hover { border-color:#9184d9; color:#d2cefd; }
-.cite:hover { border-color:#9184d9; background:#423a6a; }
-.btn-outline:hover { background:#2b2741; }
-</style>
-</head>
-<body>
-<div id="root"></div>
+        --shadow-sm: 0 0 0 1px #3f424d;
+        --shadow-md: 0 0 0 1px #595d6c, 0 6px 18px rgba(0, 0, 0, 0.55);
+        --shadow-lg: 0 0 0 1px #9397ab, 0 16px 40px rgba(0, 0, 0, 0.65);
+      }
+      html,
+      body {
+        margin: 0;
+        padding: 0;
+        background: var(--color-bg);
+        color: var(--color-text);
+        font-family: var(--font-body);
+      }
+      * {
+        box-sizing: border-box;
+      }
+      a {
+        color: var(--color-accent-300);
+        text-decoration: none;
+      }
+      a:hover {
+        color: var(--color-accent-200);
+      }
+      button:focus-visible,
+      a:focus-visible,
+      input:focus-visible {
+        outline: 2px solid var(--color-accent);
+        outline-offset: 2px;
+      }
+      ::selection {
+        background: var(--color-accent-800);
+      }
+      ::-webkit-scrollbar {
+        width: 10px;
+        height: 10px;
+      }
+      ::-webkit-scrollbar-thumb {
+        background: #3f424d;
+        border-radius: 8px;
+      }
+      ::-webkit-scrollbar-track {
+        background: transparent;
+      }
+      .row-click:hover {
+        background: #292b31;
+      }
+      .nav-item:hover {
+        background: #232532;
+        color: #e9e9ed;
+      }
+      .chip:hover {
+        border-color: #9184d9;
+        color: #d2cefd;
+      }
+      .cite:hover {
+        border-color: #9184d9;
+        background: #423a6a;
+      }
+      .btn-outline:hover {
+        background: #2b2741;
+      }
+    </style>
+  </head>
+  <body>
+    <div id="root"></div>
 
-<script src="https://unpkg.com/react@18/umd/react.production.min.js" crossorigin></script>
-<script src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js" crossorigin></script>
-<script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+    <script
+      src="https://unpkg.com/react@18/umd/react.production.min.js"
+      crossorigin
+    ></script>
+    <script
+      src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"
+      crossorigin
+    ></script>
+    <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
 
-<script type="text/babel">
-const { useState, useEffect, useCallback, useRef } = React;
+    <script type="text/babel">
+      const { useState, useEffect, useCallback, useRef } = React;
 
-/* ── Ganti satu baris ini saat deploy ─────────────────────────────── */
-const API = "http://localhost:8000";
-const REFRESH_SECONDS = 60;
+      /* ── Ganti satu baris ini saat deploy ─────────────────────────────── */
+      const API = "https://sentinelops-production-43f5.up.railway.app";
+      const REFRESH_SECONDS = 60;
 
-/* ── Tiga warna status, konsisten di seluruh aplikasi ─────────────── */
-const STATUS = {
-  "Aman":      { color: "#5fae86", tint: "#1e2f28" },
-  "Perhatian": { color: "#d3ac5c", tint: "#302819" },
-  "Berisiko":  { color: "#d4746b", tint: "#33211f" },
-};
-const bandOf = (b) => STATUS[b] || STATUS["Aman"];
-const MONO = "var(--font-mono)";
+      /* ── Tiga warna status, konsisten di seluruh aplikasi ─────────────── */
+      const STATUS = {
+        Aman: { color: "#5fae86", tint: "#1e2f28" },
+        Perhatian: { color: "#d3ac5c", tint: "#302819" },
+        Berisiko: { color: "#d4746b", tint: "#33211f" },
+      };
+      const bandOf = (b) => STATUS[b] || STATUS["Aman"];
+      const MONO = "var(--font-mono)";
 
-/* ── Data contoh: dipakai hanya kalau API tidak terjangkau ────────── */
-const SAMPLE_ASSETS = { hosts: [
-  { ip:"192.168.1.10", risk_score:78, band:"Berisiko",  reason:"804 koneksi dalam satu window (baseline biasanya ~1)", baseline_status:"sufficient",   last_seen:"2 menit lalu" },
-  { ip:"192.168.1.44", risk_score:71, band:"Berisiko",  reason:"Port scan terdeteksi ke 128 port berbeda",             baseline_status:"sufficient",   last_seen:"4 menit lalu" },
-  { ip:"192.168.1.5",  risk_score:52, band:"Perhatian", reason:"Volume byte keluar 6x di atas baseline harian",        baseline_status:"sufficient",   last_seen:"9 menit lalu" },
-  { ip:"192.168.1.23", risk_score:38, band:"Perhatian", reason:"Baseline belum cukup data, aktivitas belum bisa dinilai", baseline_status:"insufficient", last_seen:"13 menit lalu" },
-  { ip:"192.168.1.7",  risk_score:12, band:"Aman",      reason:"Pola trafik sesuai baseline",                          baseline_status:"sufficient",   last_seen:"1 menit lalu" },
-  { ip:"192.168.1.61", risk_score:4,  band:"Aman",      reason:"Tidak ada event mencurigakan dalam 24 jam",            baseline_status:"sufficient",   last_seen:"3 menit lalu" },
-]};
+      /* ── Data contoh: dipakai hanya kalau API tidak terjangkau ────────── */
+      const SAMPLE_ASSETS = {
+        hosts: [
+          {
+            ip: "192.168.1.10",
+            risk_score: 78,
+            band: "Berisiko",
+            reason: "804 koneksi dalam satu window (baseline biasanya ~1)",
+            baseline_status: "sufficient",
+            last_seen: "2 menit lalu",
+          },
+          {
+            ip: "192.168.1.44",
+            risk_score: 71,
+            band: "Berisiko",
+            reason: "Port scan terdeteksi ke 128 port berbeda",
+            baseline_status: "sufficient",
+            last_seen: "4 menit lalu",
+          },
+          {
+            ip: "192.168.1.5",
+            risk_score: 52,
+            band: "Perhatian",
+            reason: "Volume byte keluar 6x di atas baseline harian",
+            baseline_status: "sufficient",
+            last_seen: "9 menit lalu",
+          },
+          {
+            ip: "192.168.1.23",
+            risk_score: 38,
+            band: "Perhatian",
+            reason: "Baseline belum cukup data, aktivitas belum bisa dinilai",
+            baseline_status: "insufficient",
+            last_seen: "13 menit lalu",
+          },
+          {
+            ip: "192.168.1.7",
+            risk_score: 12,
+            band: "Aman",
+            reason: "Pola trafik sesuai baseline",
+            baseline_status: "sufficient",
+            last_seen: "1 menit lalu",
+          },
+          {
+            ip: "192.168.1.61",
+            risk_score: 4,
+            band: "Aman",
+            reason: "Tidak ada event mencurigakan dalam 24 jam",
+            baseline_status: "sufficient",
+            last_seen: "3 menit lalu",
+          },
+        ],
+      };
 
-const SAMPLE_TIMELINE = { events: [
-  { ts:"2026-08-29T14:51:07", src_ip:"192.168.1.5",  dest_ip:"192.168.1.10",  dest_port:445,  sid:1000001, signature:"Potential TCP Port Scan Detected",           source:"signature" },
-  { ts:"2026-08-29T14:49:31", src_ip:"192.168.1.44", dest_ip:"192.168.1.1",   dest_port:22,   sid:1000004, signature:"SSH Brute Force Attempt",                    source:"signature" },
-  { ts:"2026-08-29T14:44:02", src_ip:"192.168.1.10", dest_ip:"203.0.113.9",   dest_port:443,  sid:1000012, signature:"Suspicious Outbound TLS to Rare Destination", source:"signature" },
-  { ts:"2026-08-29T14:38:55", src_ip:"192.168.1.44", dest_ip:"192.168.1.10",  dest_port:139,  sid:1000002, signature:"NULL Scan Detected",                         source:"signature" },
-  { ts:"2026-08-29T14:52:44", src_ip:"192.168.1.10", dest_ip:"192.168.1.201", dest_port:8080, sid:null, signature:null, source:"statistical" },
-  { ts:"2026-08-29T14:47:19", src_ip:"192.168.1.5",  dest_ip:"10.10.4.18",    dest_port:3389, sid:null, signature:null, source:"statistical" },
-  { ts:"2026-08-29T14:41:03", src_ip:"192.168.1.23", dest_ip:"192.168.1.10",  dest_port:5900, sid:null, signature:null, source:"statistical" },
-  { ts:"2026-08-29T14:33:12", src_ip:"192.168.1.61", dest_ip:"198.51.100.7",  dest_port:53,   sid:null, signature:null, source:"statistical" },
-]};
+      const SAMPLE_TIMELINE = {
+        events: [
+          {
+            ts: "2026-08-29T14:51:07",
+            src_ip: "192.168.1.5",
+            dest_ip: "192.168.1.10",
+            dest_port: 445,
+            sid: 1000001,
+            signature: "Potential TCP Port Scan Detected",
+            source: "signature",
+          },
+          {
+            ts: "2026-08-29T14:49:31",
+            src_ip: "192.168.1.44",
+            dest_ip: "192.168.1.1",
+            dest_port: 22,
+            sid: 1000004,
+            signature: "SSH Brute Force Attempt",
+            source: "signature",
+          },
+          {
+            ts: "2026-08-29T14:44:02",
+            src_ip: "192.168.1.10",
+            dest_ip: "203.0.113.9",
+            dest_port: 443,
+            sid: 1000012,
+            signature: "Suspicious Outbound TLS to Rare Destination",
+            source: "signature",
+          },
+          {
+            ts: "2026-08-29T14:38:55",
+            src_ip: "192.168.1.44",
+            dest_ip: "192.168.1.10",
+            dest_port: 139,
+            sid: 1000002,
+            signature: "NULL Scan Detected",
+            source: "signature",
+          },
+          {
+            ts: "2026-08-29T14:52:44",
+            src_ip: "192.168.1.10",
+            dest_ip: "192.168.1.201",
+            dest_port: 8080,
+            sid: null,
+            signature: null,
+            source: "statistical",
+          },
+          {
+            ts: "2026-08-29T14:47:19",
+            src_ip: "192.168.1.5",
+            dest_ip: "10.10.4.18",
+            dest_port: 3389,
+            sid: null,
+            signature: null,
+            source: "statistical",
+          },
+          {
+            ts: "2026-08-29T14:41:03",
+            src_ip: "192.168.1.23",
+            dest_ip: "192.168.1.10",
+            dest_port: 5900,
+            sid: null,
+            signature: null,
+            source: "statistical",
+          },
+          {
+            ts: "2026-08-29T14:33:12",
+            src_ip: "192.168.1.61",
+            dest_ip: "198.51.100.7",
+            dest_port: 53,
+            sid: null,
+            signature: null,
+            source: "statistical",
+          },
+        ],
+      };
 
-const sampleDetail = (ip) => {
-  const h = SAMPLE_ASSETS.hosts.find(x => x.ip === ip) || SAMPLE_ASSETS.hosts[0];
-  const steps = [18, 27, 45, 51, 66, h.risk_score];
-  return { ...h, total_events: 804, trend: steps.map((s, i) => ({
-    risk_score: s,
-    band: s >= 70 ? "Berisiko" : s >= 35 ? "Perhatian" : "Aman",
-    computed_at: `2026-08-29T${String(9 + i * 2).padStart(2, "0")}:00:00`,
-  }))};
-};
+      const sampleDetail = (ip) => {
+        const h =
+          SAMPLE_ASSETS.hosts.find((x) => x.ip === ip) ||
+          SAMPLE_ASSETS.hosts[0];
+        const steps = [18, 27, 45, 51, 66, h.risk_score];
+        return {
+          ...h,
+          total_events: 804,
+          trend: steps.map((s, i) => ({
+            risk_score: s,
+            band: s >= 70 ? "Berisiko" : s >= 35 ? "Perhatian" : "Aman",
+            computed_at: `2026-08-29T${String(9 + i * 2).padStart(2, "0")}:00:00`,
+          })),
+        };
+      };
 
-const SAMPLE_CHAT = {
-  answer: "**Port scan** adalah upaya memetakan layanan yang terbuka pada sebuah host dengan mencoba banyak port secara berurutan.\n\nCiri yang biasa terlihat pada data kamu:\n- Satu sumber menghubungi banyak port tujuan dalam waktu singkat.\n- Sebagian besar koneksi tidak selesai (tidak ada balasan dari port tertutup).\n- Volume koneksi jauh di atas baseline host tersebut.\n\nLangkah wajar berikutnya: periksa apakah sumber scan adalah perangkat inventaris sekolah, lalu batasi akses lateral jika bukan.",
-  sources: [
-    { technique_id:"T1046", name:"Network Service Discovery", source_doc:"MITRE ATT&CK Enterprise v19.1", source_url:"https://attack.mitre.org/techniques/T1046/", sids:[1000001] },
-    { technique_id:"T1595", name:"Active Scanning",           source_doc:"MITRE ATT&CK Enterprise v19.1", source_url:"https://attack.mitre.org/techniques/T1595/", sids:[1000002] },
-  ],
-};
+      const SAMPLE_CHAT = {
+        answer:
+          "**Port scan** adalah upaya memetakan layanan yang terbuka pada sebuah host dengan mencoba banyak port secara berurutan.\n\nCiri yang biasa terlihat pada data kamu:\n- Satu sumber menghubungi banyak port tujuan dalam waktu singkat.\n- Sebagian besar koneksi tidak selesai (tidak ada balasan dari port tertutup).\n- Volume koneksi jauh di atas baseline host tersebut.\n\nLangkah wajar berikutnya: periksa apakah sumber scan adalah perangkat inventaris sekolah, lalu batasi akses lateral jika bukan.",
+        sources: [
+          {
+            technique_id: "T1046",
+            name: "Network Service Discovery",
+            source_doc: "MITRE ATT&CK Enterprise v19.1",
+            source_url: "https://attack.mitre.org/techniques/T1046/",
+            sids: [1000001],
+          },
+          {
+            technique_id: "T1595",
+            name: "Active Scanning",
+            source_doc: "MITRE ATT&CK Enterprise v19.1",
+            source_url: "https://attack.mitre.org/techniques/T1595/",
+            sids: [1000002],
+          },
+        ],
+      };
 
-/* ── Teks kaya: paragraf, tebal, poin ────────────────────────────── */
-function RichText({ text }) {
-  const blocks = String(text || "").split("\n").map(l => l.trim()).filter(Boolean).map(raw => {
-    const isLi = /^[-*\u2022]\s+/.test(raw);
-    const body = isLi ? raw.replace(/^[-*\u2022]\s+/, "") : raw;
-    const spans = body.split(/(\*\*[^*]+\*\*)/).filter(Boolean).map(part => {
-      const bold = /^\*\*[^*]+\*\*$/.test(part);
-      return { text: bold ? part.slice(2, -2) : part, bold };
-    });
-    return { isLi, spans };
-  });
-  return (
-    <div style={{ display:"flex", flexDirection:"column", gap:9 }}>
-      {blocks.map((b, i) => (
-        <div key={i} style={{ display:"flex", gap:8, fontSize:13, lineHeight:1.6, color:"#cfd3e5", textWrap:"pretty" }}>
-          {b.isLi && <span style={{ color:"var(--color-accent)" }}>·</span>}
-          <span>{b.spans.map((s, j) => (
-            <span key={j} style={{ fontWeight: s.bold ? 600 : 400, color: s.bold ? "#e9e9ed" : "#cfd3e5" }}>{s.text}</span>
-          ))}</span>
-        </div>
-      ))}
-    </div>
-  );
-}
-
-/* ── Sidebar tetap ───────────────────────────────────────────────── */
-function Sidebar({ page, setPage, hasHost, sample }) {
-  const items = [
-    { key:"dashboard", label:"Dashboard Aset" },
-    { key:"timeline",  label:"Timeline Anomali" },
-    ...(hasHost ? [{ key:"detail", label:"Detail Host" }] : []),
-    { key:"chat",      label:"Analyst Chat" },
-  ];
-  return (
-    <nav style={{ width:236, flex:"0 0 236px", borderRight:"1px solid var(--color-neutral-900)", padding:"22px 14px",
-                  display:"flex", flexDirection:"column", gap:28, position:"sticky", top:0, alignSelf:"flex-start", height:"100vh" }}>
-      <div style={{ display:"flex", flexDirection:"column", gap:3, padding:"0 8px" }}>
-        <div style={{ display:"flex", alignItems:"center", gap:9 }}>
-          <span style={{ width:9, height:9, borderRadius:2, background:"var(--color-accent)", boxShadow:"0 0 10px var(--color-accent)" }} />
-          <span style={{ fontFamily:"var(--font-heading)", fontWeight:500, fontSize:16, letterSpacing:"-0.01em" }}>PhagOS</span>
-        </div>
-        <span style={{ fontSize:11, color:"var(--color-neutral-600)", paddingLeft:18 }}>Analis SOC Virtual</span>
-      </div>
-
-      <div style={{ display:"flex", flexDirection:"column", gap:2 }}>
-        {items.map(it => {
-          const active = page === it.key;
-          return (
-            <button key={it.key} className="nav-item" onClick={() => setPage(it.key)}
-              style={{ display:"flex", alignItems:"center", gap:10, width:"100%", textAlign:"left", padding:"9px 10px",
-                       borderRadius:"var(--radius-md)", border:`1px solid ${active ? "var(--color-accent-700)" : "transparent"}`,
-                       background: active ? "var(--color-accent-900)" : "transparent",
-                       color: active ? "var(--color-text)" : "var(--color-neutral-500)",
-                       fontFamily:"var(--font-body)", fontSize:13, cursor:"pointer" }}>
-              <span style={{ flex:"0 0 5px", width:5, height:5, borderRadius:"50%", background: active ? "var(--color-accent)" : "var(--color-neutral-700)" }} />
-              <span style={{ whiteSpace:"nowrap", lineHeight:1.4 }}>{it.label}</span>
-            </button>
-          );
-        })}
-      </div>
-
-      <div style={{ marginTop:"auto", display:"flex", flexDirection:"column", gap:8, padding:"0 8px" }}>
-        <div style={{ fontSize:10, letterSpacing:"0.08em", textTransform:"uppercase", color:"var(--color-neutral-700)" }}>Sumber data</div>
-        <div style={{ fontFamily:MONO, fontSize:11, color:"var(--color-neutral-500)", wordBreak:"break-all" }}>{API}</div>
-        <div style={{ display:"flex", alignItems:"center", gap:7, fontSize:11, color:"var(--color-neutral-600)" }}>
-          <span style={{ width:6, height:6, borderRadius:"50%", background: sample ? STATUS["Perhatian"].color : STATUS["Aman"].color }} />
-          <span>{sample ? "data contoh (API tak terjangkau)" : `terhubung, muat ulang ${REFRESH_SECONDS}s`}</span>
-        </div>
-      </div>
-    </nav>
-  );
-}
-
-/* ── Halaman 1: Dashboard Aset ───────────────────────────────────── */
-function Dashboard({ hosts, onOpenHost }) {
-  const sorted = [...hosts].sort((a, b) => (b.risk_score || 0) - (a.risk_score || 0));
-  const count = (b) => sorted.filter(h => h.band === b).length;
-  const cards = [
-    { label:"Total host dipantau", value:sorted.length,       color:"var(--color-accent)",     num:"var(--color-text)",        note:"Host aktif dalam 24 jam terakhir" },
-    { label:"Perlu perhatian",     value:count("Perhatian"),  color:STATUS["Perhatian"].color, num:STATUS["Perhatian"].color,  note:"Skor 35–69, pantau perkembangannya" },
-    { label:"Berisiko",            value:count("Berisiko"),   color:STATUS["Berisiko"].color,  num:STATUS["Berisiko"].color,   note:"Skor 70+, tindak lanjuti hari ini" },
-  ];
-  const th = { textAlign:"left", padding:"10px 18px", fontSize:10, letterSpacing:"0.08em", textTransform:"uppercase",
-               color:"var(--color-neutral-600)", fontWeight:500, borderBottom:"1px solid var(--color-neutral-900)" };
-  return (
-    <div style={{ display:"flex", flexDirection:"column", gap:24 }}>
-      <header style={{ display:"flex", flexDirection:"column", gap:5 }}>
-        <h1 style={{ margin:0, fontFamily:"var(--font-heading)", fontWeight:500, fontSize:23, letterSpacing:"-0.01em" }}>Dashboard Aset</h1>
-        <p style={{ margin:0, color:"var(--color-neutral-500)", fontSize:13 }}>
-          Kesehatan seluruh host yang dipantau di jaringan. Muat ulang otomatis tiap {REFRESH_SECONDS} detik.
-        </p>
-      </header>
-
-      <div style={{ display:"grid", gridTemplateColumns:"repeat(3, minmax(0, 1fr))", gap:14 }}>
-        {cards.map(c => (
-          <div key={c.label} style={{ background:"var(--color-surface)", borderRadius:"var(--radius-md)", boxShadow:"var(--shadow-sm)",
-                                      padding:"18px 18px 16px", display:"flex", flexDirection:"column", gap:10 }}>
-            <div style={{ display:"flex", alignItems:"center", gap:8 }}>
-              <span style={{ width:7, height:7, borderRadius:2, background:c.color }} />
-              <span style={{ fontSize:11, letterSpacing:"0.07em", textTransform:"uppercase", color:"var(--color-neutral-500)" }}>{c.label}</span>
-            </div>
-            <div style={{ fontFamily:"var(--font-heading)", fontWeight:500, fontSize:38, lineHeight:1, color:c.num }}>{c.value}</div>
-            <div style={{ fontSize:11, color:"var(--color-neutral-600)" }}>{c.note}</div>
-          </div>
-        ))}
-      </div>
-
-      <section style={{ background:"var(--color-surface)", borderRadius:"var(--radius-md)", boxShadow:"var(--shadow-sm)", overflow:"hidden" }}>
-        <div style={{ display:"flex", alignItems:"center", justifyContent:"space-between", gap:12, padding:"14px 18px",
-                      borderBottom:"1px solid var(--color-neutral-900)" }}>
-          <span style={{ fontFamily:"var(--font-heading)", fontSize:14 }}>Daftar host</span>
-          <span style={{ fontSize:11, color:"var(--color-neutral-600)" }}>Diurutkan skor risiko tertinggi · klik baris untuk Detail Host</span>
-        </div>
-        <div style={{ overflowX:"auto" }}>
-          <table style={{ width:"100%", borderCollapse:"collapse", minWidth:820 }}>
-            <thead><tr>
-              <th style={th}>Alamat IP</th>
-              <th style={{ ...th, width:190 }}>Skor risiko</th>
-              <th style={th}>Status</th>
-              <th style={th}>Alasan</th>
-              <th style={th}>Terakhir aktif</th>
-            </tr></thead>
-            <tbody>
-              {sorted.map(h => {
-                const s = bandOf(h.band);
-                return (
-                  <tr key={h.ip} className="row-click" onClick={() => onOpenHost(h.ip)}
-                      style={{ cursor:"pointer", borderBottom:"1px solid var(--color-surface)" }}>
-                    <td style={{ padding:"13px 18px", fontFamily:MONO, fontSize:13, color:"var(--color-text)" }}>{h.ip}</td>
-                    <td style={{ padding:"13px 18px" }}>
-                      <div style={{ display:"flex", alignItems:"center", gap:10 }}>
-                        <div style={{ flex:1, height:5, borderRadius:3, background:"var(--color-neutral-800)", overflow:"hidden" }}>
-                          <div style={{ height:"100%", borderRadius:3, width:`${Math.max(2, Math.min(100, h.risk_score || 0))}%`, background:s.color }} />
-                        </div>
-                        <span style={{ fontFamily:MONO, fontSize:12, color:s.color, minWidth:26, textAlign:"right" }}>{h.risk_score}</span>
-                      </div>
-                    </td>
-                    <td style={{ padding:"13px 18px" }}>
-                      <span style={{ display:"inline-block", padding:"3px 9px", borderRadius:"var(--radius-sm)", fontSize:11,
-                                     border:`1px solid ${s.color}`, color:s.color, background:s.tint }}>{h.band}</span>
-                    </td>
-                    <td style={{ padding:"13px 18px", color:"var(--color-neutral-400)", fontSize:12, maxWidth:340, textWrap:"pretty" }}>{h.reason}</td>
-                    <td style={{ padding:"13px 18px", color:"var(--color-neutral-600)", fontSize:12, whiteSpace:"nowrap" }}>{h.last_seen}</td>
-                  </tr>
-                );
-              })}
-            </tbody>
-          </table>
-        </div>
-      </section>
-    </div>
-  );
-}
-
-/* ── Halaman 2: Timeline Anomali (wajib dua kolom bersebelahan) ──── */
-function Timeline({ events }) {
-  const map = (e) => ({
-    key: `${e.ts}-${e.src_ip}-${e.dest_ip}`,
-    time: String(e.ts || "").replace("T", " ").slice(0, 19),
-    title: e.signature || "Aktivitas flow",
-    detail: `${e.src_ip || "?"} → ${e.dest_ip || "?"}${e.dest_port ? ":" + e.dest_port : ""}${e.sid ? "  ·  SID " + e.sid : ""}`,
-  });
-  const sig  = events.filter(e => e.source === "signature").map(map);
-  const stat = events.filter(e => e.source !== "signature").map(map);
-  const columns = [
-    { title:"Terdeteksi Signature", color:"var(--color-accent)",     events:sig },
-    { title:"Anomali Statistik",    color:STATUS["Perhatian"].color, events:stat },
-  ];
-  return (
-    <div style={{ display:"flex", flexDirection:"column", gap:24 }}>
-      <header style={{ display:"flex", flexDirection:"column", gap:5 }}>
-        <h1 style={{ margin:0, fontFamily:"var(--font-heading)", fontWeight:500, fontSize:23, letterSpacing:"-0.01em" }}>Timeline Anomali</h1>
-        <p style={{ margin:0, color:"var(--color-neutral-500)", fontSize:13 }}>Event terurut waktu, dipisah menurut cara sistem mengenalinya.</p>
-      </header>
-
-      <div style={{ display:"grid", gridTemplateColumns:"repeat(2, minmax(0, 1fr))", gap:16, alignItems:"start" }}>
-        {columns.map(col => (
-          <section key={col.title} style={{ background:"var(--color-surface)", borderRadius:"var(--radius-md)", boxShadow:"var(--shadow-sm)" }}>
-            <div style={{ padding:"14px 16px", borderBottom:"1px solid var(--color-neutral-900)",
-                          display:"flex", alignItems:"center", justifyContent:"space-between", gap:10 }}>
-              <div style={{ display:"flex", alignItems:"center", gap:9 }}>
-                <span style={{ width:7, height:7, borderRadius:2, background:col.color }} />
-                <span style={{ fontFamily:"var(--font-heading)", fontSize:14 }}>{col.title}</span>
-              </div>
-              <span style={{ fontFamily:MONO, fontSize:11, color:"var(--color-neutral-600)", whiteSpace:"nowrap" }}>{col.events.length} event</span>
-            </div>
-            <div style={{ padding:"6px 0" }}>
-              {col.events.map(e => (
-                <div key={e.key} style={{ padding:"12px 16px", borderBottom:"1px solid var(--color-surface)",
-                                          display:"flex", flexDirection:"column", gap:5 }}>
-                  <span style={{ fontFamily:MONO, fontSize:11, color:"var(--color-neutral-600)" }}>{e.time}</span>
-                  <span style={{ fontSize:13, color:"var(--color-text)" }}>{e.title}</span>
-                  <span style={{ fontFamily:MONO, fontSize:11, color:"var(--color-neutral-500)" }}>{e.detail}</span>
-                </div>
-              ))}
-            </div>
-          </section>
-        ))}
-      </div>
-
-      <div style={{ border:"1px solid var(--color-accent-800)", background:"var(--color-accent-900)", borderRadius:"var(--radius-md)",
-                    padding:"16px 18px", display:"flex", flexDirection:"column", gap:7, maxWidth:820 }}>
-        <span style={{ fontFamily:"var(--font-heading)", fontSize:13, color:"var(--color-accent-300)" }}>Kenapa dua kolom</span>
-        <p style={{ margin:0, fontSize:13, color:"var(--color-neutral-300)", lineHeight:1.55, textWrap:"pretty" }}>
-          Kolom kiri adalah temuan rule Suricata: event yang sudah cocok dengan signature yang diketahui. Kolom kanan adalah nilai tambah
-          sistem ini, event flow yang tidak cocok signature apa pun tapi ditandai mencurigakan oleh analisis statistik terhadap baseline host.
-          Menggabungkan keduanya akan menyembunyikan apa yang Suricata lewatkan.
-        </p>
-      </div>
-    </div>
-  );
-}
-
-/* ── Halaman 3: Detail Host ──────────────────────────────────────── */
-function HostDetail({ ip, detail, onBack, onAsk }) {
-  const s = bandOf(detail && detail.band);
-  const card = { background:"var(--color-surface)", borderRadius:"var(--radius-md)", boxShadow:"var(--shadow-sm)",
-                 padding:18, display:"flex", flexDirection:"column", gap:9 };
-  const kicker = { fontSize:11, letterSpacing:"0.07em", textTransform:"uppercase", color:"var(--color-neutral-500)" };
-  const rows = detail ? [
-    { label:"Alasan",          value:detail.reason,          font:"inherit" },
-    { label:"Status baseline", value:detail.baseline_status, font:MONO },
-    { label:"Total event",     value:detail.total_events,    font:MONO },
-    { label:"Terakhir aktif",  value:detail.last_seen,       font:"inherit" },
-  ] : [];
-  const trend = (detail && detail.trend) || [];
-
-  return (
-    <div style={{ display:"flex", flexDirection:"column", gap:24 }}>
-      <header style={{ display:"flex", flexDirection:"column", gap:9 }}>
-        <button onClick={onBack} style={{ alignSelf:"flex-start", background:"transparent", border:"none",
-                 color:"var(--color-neutral-500)", fontFamily:"var(--font-body)", fontSize:12, padding:0, cursor:"pointer" }}>
-          ← Dashboard Aset
-        </button>
-        <h1 style={{ margin:0, fontFamily:"var(--font-heading)", fontWeight:500, fontSize:23, letterSpacing:"-0.01em" }}>Detail Host</h1>
-      </header>
-
-      <div style={{ display:"grid", gridTemplateColumns:"repeat(3, minmax(0, 1fr))", gap:14 }}>
-        <div style={card}>
-          <span style={kicker}>Alamat host</span>
-          <span style={{ fontFamily:MONO, fontSize:22, color:"var(--color-text)" }}>{(detail && detail.ip) || ip}</span>
-        </div>
-        <div style={card}>
-          <span style={kicker}>Skor risiko</span>
-          <span style={{ fontFamily:"var(--font-heading)", fontWeight:500, fontSize:34, lineHeight:1,
-                         color: detail ? s.color : "var(--color-neutral-500)" }}>
-            {detail ? detail.risk_score : "—"}
-          </span>
-        </div>
-        <div style={{ ...card, alignItems:"flex-start" }}>
-          <span style={kicker}>Status</span>
-          <span style={{ padding:"5px 12px", borderRadius:5, fontSize:13,
-                         border:`1px solid ${detail ? s.color : "var(--color-neutral-700)"}`,
-                         color: detail ? s.color : "var(--color-neutral-500)",
-                         background: detail ? s.tint : "var(--color-neutral-900)" }}>
-            {detail ? detail.band : "memuat"}
-          </span>
-        </div>
-      </div>
-
-      <div style={{ display:"grid", gridTemplateColumns:"repeat(2, minmax(0, 1fr))", gap:16, alignItems:"start" }}>
-        <section style={{ background:"var(--color-surface)", borderRadius:"var(--radius-md)", boxShadow:"var(--shadow-sm)" }}>
-          <div style={{ padding:"14px 16px", borderBottom:"1px solid var(--color-neutral-900)", fontFamily:"var(--font-heading)", fontSize:14 }}>
-            Informasi host
-          </div>
-          <div style={{ padding:"4px 16px 12px" }}>
-            {rows.map(r => (
-              <div key={r.label} style={{ display:"flex", gap:16, justifyContent:"space-between", padding:"11px 0",
-                                          borderBottom:"1px solid var(--color-surface)" }}>
-                <span style={{ fontSize:12, color:"var(--color-neutral-600)", whiteSpace:"nowrap" }}>{r.label}</span>
-                <span style={{ fontSize:12, color:"var(--color-neutral-300)", textAlign:"right", fontFamily:r.font, textWrap:"pretty" }}>{r.value}</span>
+      /* ── Teks kaya: paragraf, tebal, poin ────────────────────────────── */
+      function RichText({ text }) {
+        const blocks = String(text || "")
+          .split("\n")
+          .map((l) => l.trim())
+          .filter(Boolean)
+          .map((raw) => {
+            const isLi = /^[-*\u2022]\s+/.test(raw);
+            const body = isLi ? raw.replace(/^[-*\u2022]\s+/, "") : raw;
+            const spans = body
+              .split(/(\*\*[^*]+\*\*)/)
+              .filter(Boolean)
+              .map((part) => {
+                const bold = /^\*\*[^*]+\*\*$/.test(part);
+                return { text: bold ? part.slice(2, -2) : part, bold };
+              });
+            return { isLi, spans };
+          });
+        return (
+          <div style={{ display: "flex", flexDirection: "column", gap: 9 }}>
+            {blocks.map((b, i) => (
+              <div
+                key={i}
+                style={{
+                  display: "flex",
+                  gap: 8,
+                  fontSize: 13,
+                  lineHeight: 1.6,
+                  color: "#cfd3e5",
+                  textWrap: "pretty",
+                }}
+              >
+                {b.isLi && (
+                  <span style={{ color: "var(--color-accent)" }}>·</span>
+                )}
+                <span>
+                  {b.spans.map((s, j) => (
+                    <span
+                      key={j}
+                      style={{
+                        fontWeight: s.bold ? 600 : 400,
+                        color: s.bold ? "#e9e9ed" : "#cfd3e5",
+                      }}
+                    >
+                      {s.text}
+                    </span>
+                  ))}
+                </span>
               </div>
             ))}
           </div>
-        </section>
+        );
+      }
 
-        <section style={{ background:"var(--color-surface)", borderRadius:"var(--radius-md)", boxShadow:"var(--shadow-sm)" }}>
-          <div style={{ padding:"14px 16px", borderBottom:"1px solid var(--color-neutral-900)",
-                        display:"flex", justifyContent:"space-between", alignItems:"center", gap:10 }}>
-            <span style={{ fontFamily:"var(--font-heading)", fontSize:14 }}>Tren skor risiko</span>
-            <span style={{ fontSize:11, color:"var(--color-neutral-600)" }}>0–100</span>
-          </div>
-          <div style={{ padding:"20px 16px 14px", display:"flex", alignItems:"flex-end", gap:10, height:220 }}>
-            {trend.map((t, i) => {
-              const ts = bandOf(t.band);
-              return (
-                <div key={i} style={{ flex:1, display:"flex", flexDirection:"column", alignItems:"center", gap:8,
-                                      height:"100%", justifyContent:"flex-end" }}>
-                  <span style={{ fontFamily:MONO, fontSize:11, color:"var(--color-neutral-500)" }}>{t.risk_score}</span>
-                  <div style={{ width:"100%", borderRadius:"3px 3px 0 0",
-                                height:`${Math.max(3, Math.min(100, t.risk_score || 0))}%`, background:ts.color }} />
-                  <span style={{ fontFamily:MONO, fontSize:10, color:"var(--color-neutral-700)" }}>
-                    {String(t.computed_at || "").slice(11, 16)}
-                  </span>
-                </div>
-              );
-            })}
-          </div>
-        </section>
-      </div>
+      /* ── Sidebar tetap ───────────────────────────────────────────────── */
+      function Sidebar({ page, setPage, hasHost, sample }) {
+        const items = [
+          { key: "dashboard", label: "Dashboard Aset" },
+          { key: "timeline", label: "Timeline Anomali" },
+          ...(hasHost ? [{ key: "detail", label: "Detail Host" }] : []),
+          { key: "chat", label: "Analyst Chat" },
+        ];
+        return (
+          <nav
+            style={{
+              width: 236,
+              flex: "0 0 236px",
+              borderRight: "1px solid var(--color-neutral-900)",
+              padding: "22px 14px",
+              display: "flex",
+              flexDirection: "column",
+              gap: 28,
+              position: "sticky",
+              top: 0,
+              alignSelf: "flex-start",
+              height: "100vh",
+            }}
+          >
+            <div
+              style={{
+                display: "flex",
+                flexDirection: "column",
+                gap: 3,
+                padding: "0 8px",
+              }}
+            >
+              <div style={{ display: "flex", alignItems: "center", gap: 9 }}>
+                <span
+                  style={{
+                    width: 9,
+                    height: 9,
+                    borderRadius: 2,
+                    background: "var(--color-accent)",
+                    boxShadow: "0 0 10px var(--color-accent)",
+                  }}
+                />
+                <span
+                  style={{
+                    fontFamily: "var(--font-heading)",
+                    fontWeight: 500,
+                    fontSize: 16,
+                    letterSpacing: "-0.01em",
+                  }}
+                >
+                  PhagOS
+                </span>
+              </div>
+              <span
+                style={{
+                  fontSize: 11,
+                  color: "var(--color-neutral-600)",
+                  paddingLeft: 18,
+                }}
+              >
+                Analis SOC Virtual
+              </span>
+            </div>
 
-      <button className="btn-outline" onClick={onAsk}
-        style={{ alignSelf:"flex-start", padding:"10px 16px", borderRadius:"var(--radius-md)",
-                 border:"1px solid var(--color-accent)", background:"transparent", color:"var(--color-accent-300)",
-                 fontFamily:"var(--font-body)", fontSize:13, cursor:"pointer" }}>
-        Tanya asisten tentang host ini
-      </button>
-    </div>
-  );
-}
-
-/* ── Halaman 4: Analyst Chat ─────────────────────────────────────── */
-const CHIPS = [
-  "Apa itu port scan?",
-  "Arti SID 1000001?",
-  "Kenapa host ini dianggap berisiko?",
-  "Bedanya anomali statistik dan signature?",
-];
-
-function Chat({ messages, pending, onSend }) {
-  const [input, setInput] = useState("");
-  const submit = (q) => { const v = (q ?? input).trim(); if (!v) return; setInput(""); onSend(v); };
-  return (
-    <div style={{ display:"flex", flexDirection:"column", gap:18, maxWidth:900, width:"100%", flex:1 }}>
-      <header style={{ display:"flex", flexDirection:"column", gap:5 }}>
-        <h1 style={{ margin:0, fontFamily:"var(--font-heading)", fontWeight:500, fontSize:23, letterSpacing:"-0.01em" }}>Analyst Chat</h1>
-        <p style={{ margin:0, color:"var(--color-neutral-500)", fontSize:13 }}>Jawaban selalu membawa sumber rujukan yang bisa dibuka.</p>
-      </header>
-
-      <div style={{ display:"flex", flexDirection:"column", gap:16, flex:1 }}>
-        {messages.map((m, i) => {
-          const isUser = m.role === "user";
-          return (
-            <div key={i} style={{ display:"flex", justifyContent: isUser ? "flex-end" : "flex-start" }}>
-              <div style={{ maxWidth:"78%", display:"flex", flexDirection:"column", gap:10 }}>
-                {isUser ? (
-                  <div style={{ background:"var(--color-accent-900)", border:"1px solid var(--color-accent-800)",
-                                borderRadius:"var(--radius-md)", padding:"11px 14px", fontSize:13, lineHeight:1.55, color:"var(--color-text)" }}>
-                    {m.text}
-                  </div>
-                ) : (
-                  <div style={{ background:"var(--color-surface)", boxShadow:"var(--shadow-sm)", borderRadius:"var(--radius-md)", padding:"14px 16px" }}>
-                    <RichText text={m.text} />
-                  </div>
-                )}
-
-                {!isUser && m.sources && m.sources.length > 0 && (
-                  <div style={{ display:"flex", flexDirection:"column", gap:7 }}>
-                    <span style={{ fontSize:10, letterSpacing:"0.08em", textTransform:"uppercase", color:"var(--color-neutral-600)" }}>
-                      Sumber rujukan
+            <div style={{ display: "flex", flexDirection: "column", gap: 2 }}>
+              {items.map((it) => {
+                const active = page === it.key;
+                return (
+                  <button
+                    key={it.key}
+                    className="nav-item"
+                    onClick={() => setPage(it.key)}
+                    style={{
+                      display: "flex",
+                      alignItems: "center",
+                      gap: 10,
+                      width: "100%",
+                      textAlign: "left",
+                      padding: "9px 10px",
+                      borderRadius: "var(--radius-md)",
+                      border: `1px solid ${active ? "var(--color-accent-700)" : "transparent"}`,
+                      background: active
+                        ? "var(--color-accent-900)"
+                        : "transparent",
+                      color: active
+                        ? "var(--color-text)"
+                        : "var(--color-neutral-500)",
+                      fontFamily: "var(--font-body)",
+                      fontSize: 13,
+                      cursor: "pointer",
+                    }}
+                  >
+                    <span
+                      style={{
+                        flex: "0 0 5px",
+                        width: 5,
+                        height: 5,
+                        borderRadius: "50%",
+                        background: active
+                          ? "var(--color-accent)"
+                          : "var(--color-neutral-700)",
+                      }}
+                    />
+                    <span style={{ whiteSpace: "nowrap", lineHeight: 1.4 }}>
+                      {it.label}
                     </span>
-                    <div style={{ display:"flex", flexWrap:"wrap", gap:8 }}>
-                      {m.sources.map((src, j) => (
-                        <a key={j} className="cite" href={src.source_url} target="_blank" rel="noopener"
-                           style={{ display:"flex", flexDirection:"column", gap:3, padding:"9px 12px", borderRadius:"var(--radius-md)",
-                                    border:"1px solid var(--color-accent-700)", background:"var(--color-accent-900)",
-                                    textDecoration:"none", maxWidth:320 }}>
-                          <span style={{ display:"flex", alignItems:"baseline", gap:7 }}>
-                            <span style={{ fontFamily:MONO, fontSize:12, color:"var(--color-accent-300)" }}>{src.technique_id}</span>
-                            <span style={{ color:"var(--color-accent-700)" }}>·</span>
-                            <span style={{ fontSize:12, color:"var(--color-text)" }}>{src.name}</span>
-                          </span>
-                          <span style={{ fontSize:10, color:"var(--color-neutral-500)" }}>
-                            {src.source_doc}{src.sids && src.sids.length ? `  ·  SID ${src.sids.join(", ")}` : ""}
-                          </span>
-                        </a>
-                      ))}
-                    </div>
-                  </div>
-                )}
+                  </button>
+                );
+              })}
+            </div>
+
+            <div
+              style={{
+                marginTop: "auto",
+                display: "flex",
+                flexDirection: "column",
+                gap: 8,
+                padding: "0 8px",
+              }}
+            >
+              <div
+                style={{
+                  fontSize: 10,
+                  letterSpacing: "0.08em",
+                  textTransform: "uppercase",
+                  color: "var(--color-neutral-700)",
+                }}
+              >
+                Sumber data
+              </div>
+              <div
+                style={{
+                  fontFamily: MONO,
+                  fontSize: 11,
+                  color: "var(--color-neutral-500)",
+                  wordBreak: "break-all",
+                }}
+              >
+                {API}
+              </div>
+              <div
+                style={{
+                  display: "flex",
+                  alignItems: "center",
+                  gap: 7,
+                  fontSize: 11,
+                  color: "var(--color-neutral-600)",
+                }}
+              >
+                <span
+                  style={{
+                    width: 6,
+                    height: 6,
+                    borderRadius: "50%",
+                    background: sample
+                      ? STATUS["Perhatian"].color
+                      : STATUS["Aman"].color,
+                  }}
+                />
+                <span>
+                  {sample
+                    ? "data contoh (API tak terjangkau)"
+                    : `terhubung, muat ulang ${REFRESH_SECONDS}s`}
+                </span>
               </div>
             </div>
-          );
-        })}
-        {pending && (
-          <div style={{ fontSize:12, color:"var(--color-neutral-600)", fontFamily:MONO }}>asisten menyusun jawaban…</div>
-        )}
-      </div>
+          </nav>
+        );
+      }
 
-      <div style={{ display:"flex", flexDirection:"column", gap:10, position:"sticky", bottom:0,
-                    background:"var(--color-bg)", paddingTop:10 }}>
-        <div style={{ display:"flex", flexWrap:"wrap", gap:8 }}>
-          {CHIPS.map(c => (
-            <button key={c} className="chip" onClick={() => submit(c)}
-              style={{ padding:"7px 12px", borderRadius:20, border:"1px solid var(--color-neutral-800)", background:"transparent",
-                       color:"var(--color-neutral-400)", fontFamily:"var(--font-body)", fontSize:12, cursor:"pointer" }}>
-              {c}
+      /* ── Halaman 1: Dashboard Aset ───────────────────────────────────── */
+      function Dashboard({ hosts, onOpenHost }) {
+        const sorted = [...hosts].sort(
+          (a, b) => (b.risk_score || 0) - (a.risk_score || 0),
+        );
+        const count = (b) => sorted.filter((h) => h.band === b).length;
+        const cards = [
+          {
+            label: "Total host dipantau",
+            value: sorted.length,
+            color: "var(--color-accent)",
+            num: "var(--color-text)",
+            note: "Host aktif dalam 24 jam terakhir",
+          },
+          {
+            label: "Perlu perhatian",
+            value: count("Perhatian"),
+            color: STATUS["Perhatian"].color,
+            num: STATUS["Perhatian"].color,
+            note: "Skor 35–69, pantau perkembangannya",
+          },
+          {
+            label: "Berisiko",
+            value: count("Berisiko"),
+            color: STATUS["Berisiko"].color,
+            num: STATUS["Berisiko"].color,
+            note: "Skor 70+, tindak lanjuti hari ini",
+          },
+        ];
+        const th = {
+          textAlign: "left",
+          padding: "10px 18px",
+          fontSize: 10,
+          letterSpacing: "0.08em",
+          textTransform: "uppercase",
+          color: "var(--color-neutral-600)",
+          fontWeight: 500,
+          borderBottom: "1px solid var(--color-neutral-900)",
+        };
+        return (
+          <div style={{ display: "flex", flexDirection: "column", gap: 24 }}>
+            <header
+              style={{ display: "flex", flexDirection: "column", gap: 5 }}
+            >
+              <h1
+                style={{
+                  margin: 0,
+                  fontFamily: "var(--font-heading)",
+                  fontWeight: 500,
+                  fontSize: 23,
+                  letterSpacing: "-0.01em",
+                }}
+              >
+                Dashboard Aset
+              </h1>
+              <p
+                style={{
+                  margin: 0,
+                  color: "var(--color-neutral-500)",
+                  fontSize: 13,
+                }}
+              >
+                Kesehatan seluruh host yang dipantau di jaringan. Muat ulang
+                otomatis tiap {REFRESH_SECONDS} detik.
+              </p>
+            </header>
+
+            <div
+              style={{
+                display: "grid",
+                gridTemplateColumns: "repeat(3, minmax(0, 1fr))",
+                gap: 14,
+              }}
+            >
+              {cards.map((c) => (
+                <div
+                  key={c.label}
+                  style={{
+                    background: "var(--color-surface)",
+                    borderRadius: "var(--radius-md)",
+                    boxShadow: "var(--shadow-sm)",
+                    padding: "18px 18px 16px",
+                    display: "flex",
+                    flexDirection: "column",
+                    gap: 10,
+                  }}
+                >
+                  <div
+                    style={{ display: "flex", alignItems: "center", gap: 8 }}
+                  >
+                    <span
+                      style={{
+                        width: 7,
+                        height: 7,
+                        borderRadius: 2,
+                        background: c.color,
+                      }}
+                    />
+                    <span
+                      style={{
+                        fontSize: 11,
+                        letterSpacing: "0.07em",
+                        textTransform: "uppercase",
+                        color: "var(--color-neutral-500)",
+                      }}
+                    >
+                      {c.label}
+                    </span>
+                  </div>
+                  <div
+                    style={{
+                      fontFamily: "var(--font-heading)",
+                      fontWeight: 500,
+                      fontSize: 38,
+                      lineHeight: 1,
+                      color: c.num,
+                    }}
+                  >
+                    {c.value}
+                  </div>
+                  <div
+                    style={{ fontSize: 11, color: "var(--color-neutral-600)" }}
+                  >
+                    {c.note}
+                  </div>
+                </div>
+              ))}
+            </div>
+
+            <section
+              style={{
+                background: "var(--color-surface)",
+                borderRadius: "var(--radius-md)",
+                boxShadow: "var(--shadow-sm)",
+                overflow: "hidden",
+              }}
+            >
+              <div
+                style={{
+                  display: "flex",
+                  alignItems: "center",
+                  justifyContent: "space-between",
+                  gap: 12,
+                  padding: "14px 18px",
+                  borderBottom: "1px solid var(--color-neutral-900)",
+                }}
+              >
+                <span
+                  style={{ fontFamily: "var(--font-heading)", fontSize: 14 }}
+                >
+                  Daftar host
+                </span>
+                <span
+                  style={{ fontSize: 11, color: "var(--color-neutral-600)" }}
+                >
+                  Diurutkan skor risiko tertinggi · klik baris untuk Detail Host
+                </span>
+              </div>
+              <div style={{ overflowX: "auto" }}>
+                <table
+                  style={{
+                    width: "100%",
+                    borderCollapse: "collapse",
+                    minWidth: 820,
+                  }}
+                >
+                  <thead>
+                    <tr>
+                      <th style={th}>Alamat IP</th>
+                      <th style={{ ...th, width: 190 }}>Skor risiko</th>
+                      <th style={th}>Status</th>
+                      <th style={th}>Alasan</th>
+                      <th style={th}>Terakhir aktif</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {sorted.map((h) => {
+                      const s = bandOf(h.band);
+                      return (
+                        <tr
+                          key={h.ip}
+                          className="row-click"
+                          onClick={() => onOpenHost(h.ip)}
+                          style={{
+                            cursor: "pointer",
+                            borderBottom: "1px solid var(--color-surface)",
+                          }}
+                        >
+                          <td
+                            style={{
+                              padding: "13px 18px",
+                              fontFamily: MONO,
+                              fontSize: 13,
+                              color: "var(--color-text)",
+                            }}
+                          >
+                            {h.ip}
+                          </td>
+                          <td style={{ padding: "13px 18px" }}>
+                            <div
+                              style={{
+                                display: "flex",
+                                alignItems: "center",
+                                gap: 10,
+                              }}
+                            >
+                              <div
+                                style={{
+                                  flex: 1,
+                                  height: 5,
+                                  borderRadius: 3,
+                                  background: "var(--color-neutral-800)",
+                                  overflow: "hidden",
+                                }}
+                              >
+                                <div
+                                  style={{
+                                    height: "100%",
+                                    borderRadius: 3,
+                                    width: `${Math.max(2, Math.min(100, h.risk_score || 0))}%`,
+                                    background: s.color,
+                                  }}
+                                />
+                              </div>
+                              <span
+                                style={{
+                                  fontFamily: MONO,
+                                  fontSize: 12,
+                                  color: s.color,
+                                  minWidth: 26,
+                                  textAlign: "right",
+                                }}
+                              >
+                                {h.risk_score}
+                              </span>
+                            </div>
+                          </td>
+                          <td style={{ padding: "13px 18px" }}>
+                            <span
+                              style={{
+                                display: "inline-block",
+                                padding: "3px 9px",
+                                borderRadius: "var(--radius-sm)",
+                                fontSize: 11,
+                                border: `1px solid ${s.color}`,
+                                color: s.color,
+                                background: s.tint,
+                              }}
+                            >
+                              {h.band}
+                            </span>
+                          </td>
+                          <td
+                            style={{
+                              padding: "13px 18px",
+                              color: "var(--color-neutral-400)",
+                              fontSize: 12,
+                              maxWidth: 340,
+                              textWrap: "pretty",
+                            }}
+                          >
+                            {h.reason}
+                          </td>
+                          <td
+                            style={{
+                              padding: "13px 18px",
+                              color: "var(--color-neutral-600)",
+                              fontSize: 12,
+                              whiteSpace: "nowrap",
+                            }}
+                          >
+                            {h.last_seen}
+                          </td>
+                        </tr>
+                      );
+                    })}
+                  </tbody>
+                </table>
+              </div>
+            </section>
+          </div>
+        );
+      }
+
+      /* ── Halaman 2: Timeline Anomali (wajib dua kolom bersebelahan) ──── */
+      function Timeline({ events }) {
+        const map = (e) => ({
+          key: `${e.ts}-${e.src_ip}-${e.dest_ip}`,
+          time: String(e.ts || "")
+            .replace("T", " ")
+            .slice(0, 19),
+          title: e.signature || "Aktivitas flow",
+          detail: `${e.src_ip || "?"} → ${e.dest_ip || "?"}${e.dest_port ? ":" + e.dest_port : ""}${e.sid ? "  ·  SID " + e.sid : ""}`,
+        });
+        const sig = events.filter((e) => e.source === "signature").map(map);
+        const stat = events.filter((e) => e.source !== "signature").map(map);
+        const columns = [
+          {
+            title: "Terdeteksi Signature",
+            color: "var(--color-accent)",
+            events: sig,
+          },
+          {
+            title: "Anomali Statistik",
+            color: STATUS["Perhatian"].color,
+            events: stat,
+          },
+        ];
+        return (
+          <div style={{ display: "flex", flexDirection: "column", gap: 24 }}>
+            <header
+              style={{ display: "flex", flexDirection: "column", gap: 5 }}
+            >
+              <h1
+                style={{
+                  margin: 0,
+                  fontFamily: "var(--font-heading)",
+                  fontWeight: 500,
+                  fontSize: 23,
+                  letterSpacing: "-0.01em",
+                }}
+              >
+                Timeline Anomali
+              </h1>
+              <p
+                style={{
+                  margin: 0,
+                  color: "var(--color-neutral-500)",
+                  fontSize: 13,
+                }}
+              >
+                Event terurut waktu, dipisah menurut cara sistem mengenalinya.
+              </p>
+            </header>
+
+            <div
+              style={{
+                display: "grid",
+                gridTemplateColumns: "repeat(2, minmax(0, 1fr))",
+                gap: 16,
+                alignItems: "start",
+              }}
+            >
+              {columns.map((col) => (
+                <section
+                  key={col.title}
+                  style={{
+                    background: "var(--color-surface)",
+                    borderRadius: "var(--radius-md)",
+                    boxShadow: "var(--shadow-sm)",
+                  }}
+                >
+                  <div
+                    style={{
+                      padding: "14px 16px",
+                      borderBottom: "1px solid var(--color-neutral-900)",
+                      display: "flex",
+                      alignItems: "center",
+                      justifyContent: "space-between",
+                      gap: 10,
+                    }}
+                  >
+                    <div
+                      style={{ display: "flex", alignItems: "center", gap: 9 }}
+                    >
+                      <span
+                        style={{
+                          width: 7,
+                          height: 7,
+                          borderRadius: 2,
+                          background: col.color,
+                        }}
+                      />
+                      <span
+                        style={{
+                          fontFamily: "var(--font-heading)",
+                          fontSize: 14,
+                        }}
+                      >
+                        {col.title}
+                      </span>
+                    </div>
+                    <span
+                      style={{
+                        fontFamily: MONO,
+                        fontSize: 11,
+                        color: "var(--color-neutral-600)",
+                        whiteSpace: "nowrap",
+                      }}
+                    >
+                      {col.events.length} event
+                    </span>
+                  </div>
+                  <div style={{ padding: "6px 0" }}>
+                    {col.events.map((e) => (
+                      <div
+                        key={e.key}
+                        style={{
+                          padding: "12px 16px",
+                          borderBottom: "1px solid var(--color-surface)",
+                          display: "flex",
+                          flexDirection: "column",
+                          gap: 5,
+                        }}
+                      >
+                        <span
+                          style={{
+                            fontFamily: MONO,
+                            fontSize: 11,
+                            color: "var(--color-neutral-600)",
+                          }}
+                        >
+                          {e.time}
+                        </span>
+                        <span
+                          style={{ fontSize: 13, color: "var(--color-text)" }}
+                        >
+                          {e.title}
+                        </span>
+                        <span
+                          style={{
+                            fontFamily: MONO,
+                            fontSize: 11,
+                            color: "var(--color-neutral-500)",
+                          }}
+                        >
+                          {e.detail}
+                        </span>
+                      </div>
+                    ))}
+                  </div>
+                </section>
+              ))}
+            </div>
+
+            <div
+              style={{
+                border: "1px solid var(--color-accent-800)",
+                background: "var(--color-accent-900)",
+                borderRadius: "var(--radius-md)",
+                padding: "16px 18px",
+                display: "flex",
+                flexDirection: "column",
+                gap: 7,
+                maxWidth: 820,
+              }}
+            >
+              <span
+                style={{
+                  fontFamily: "var(--font-heading)",
+                  fontSize: 13,
+                  color: "var(--color-accent-300)",
+                }}
+              >
+                Kenapa dua kolom
+              </span>
+              <p
+                style={{
+                  margin: 0,
+                  fontSize: 13,
+                  color: "var(--color-neutral-300)",
+                  lineHeight: 1.55,
+                  textWrap: "pretty",
+                }}
+              >
+                Kolom kiri adalah temuan rule Suricata: event yang sudah cocok
+                dengan signature yang diketahui. Kolom kanan adalah nilai tambah
+                sistem ini, event flow yang tidak cocok signature apa pun tapi
+                ditandai mencurigakan oleh analisis statistik terhadap baseline
+                host. Menggabungkan keduanya akan menyembunyikan apa yang
+                Suricata lewatkan.
+              </p>
+            </div>
+          </div>
+        );
+      }
+
+      /* ── Halaman 3: Detail Host ──────────────────────────────────────── */
+      function HostDetail({ ip, detail, onBack, onAsk }) {
+        const s = bandOf(detail && detail.band);
+        const card = {
+          background: "var(--color-surface)",
+          borderRadius: "var(--radius-md)",
+          boxShadow: "var(--shadow-sm)",
+          padding: 18,
+          display: "flex",
+          flexDirection: "column",
+          gap: 9,
+        };
+        const kicker = {
+          fontSize: 11,
+          letterSpacing: "0.07em",
+          textTransform: "uppercase",
+          color: "var(--color-neutral-500)",
+        };
+        const rows = detail
+          ? [
+              { label: "Alasan", value: detail.reason, font: "inherit" },
+              {
+                label: "Status baseline",
+                value: detail.baseline_status,
+                font: MONO,
+              },
+              { label: "Total event", value: detail.total_events, font: MONO },
+              {
+                label: "Terakhir aktif",
+                value: detail.last_seen,
+                font: "inherit",
+              },
+            ]
+          : [];
+        const trend = (detail && detail.trend) || [];
+
+        return (
+          <div style={{ display: "flex", flexDirection: "column", gap: 24 }}>
+            <header
+              style={{ display: "flex", flexDirection: "column", gap: 9 }}
+            >
+              <button
+                onClick={onBack}
+                style={{
+                  alignSelf: "flex-start",
+                  background: "transparent",
+                  border: "none",
+                  color: "var(--color-neutral-500)",
+                  fontFamily: "var(--font-body)",
+                  fontSize: 12,
+                  padding: 0,
+                  cursor: "pointer",
+                }}
+              >
+                ← Dashboard Aset
+              </button>
+              <h1
+                style={{
+                  margin: 0,
+                  fontFamily: "var(--font-heading)",
+                  fontWeight: 500,
+                  fontSize: 23,
+                  letterSpacing: "-0.01em",
+                }}
+              >
+                Detail Host
+              </h1>
+            </header>
+
+            <div
+              style={{
+                display: "grid",
+                gridTemplateColumns: "repeat(3, minmax(0, 1fr))",
+                gap: 14,
+              }}
+            >
+              <div style={card}>
+                <span style={kicker}>Alamat host</span>
+                <span
+                  style={{
+                    fontFamily: MONO,
+                    fontSize: 22,
+                    color: "var(--color-text)",
+                  }}
+                >
+                  {(detail && detail.ip) || ip}
+                </span>
+              </div>
+              <div style={card}>
+                <span style={kicker}>Skor risiko</span>
+                <span
+                  style={{
+                    fontFamily: "var(--font-heading)",
+                    fontWeight: 500,
+                    fontSize: 34,
+                    lineHeight: 1,
+                    color: detail ? s.color : "var(--color-neutral-500)",
+                  }}
+                >
+                  {detail ? detail.risk_score : "—"}
+                </span>
+              </div>
+              <div style={{ ...card, alignItems: "flex-start" }}>
+                <span style={kicker}>Status</span>
+                <span
+                  style={{
+                    padding: "5px 12px",
+                    borderRadius: 5,
+                    fontSize: 13,
+                    border: `1px solid ${detail ? s.color : "var(--color-neutral-700)"}`,
+                    color: detail ? s.color : "var(--color-neutral-500)",
+                    background: detail ? s.tint : "var(--color-neutral-900)",
+                  }}
+                >
+                  {detail ? detail.band : "memuat"}
+                </span>
+              </div>
+            </div>
+
+            <div
+              style={{
+                display: "grid",
+                gridTemplateColumns: "repeat(2, minmax(0, 1fr))",
+                gap: 16,
+                alignItems: "start",
+              }}
+            >
+              <section
+                style={{
+                  background: "var(--color-surface)",
+                  borderRadius: "var(--radius-md)",
+                  boxShadow: "var(--shadow-sm)",
+                }}
+              >
+                <div
+                  style={{
+                    padding: "14px 16px",
+                    borderBottom: "1px solid var(--color-neutral-900)",
+                    fontFamily: "var(--font-heading)",
+                    fontSize: 14,
+                  }}
+                >
+                  Informasi host
+                </div>
+                <div style={{ padding: "4px 16px 12px" }}>
+                  {rows.map((r) => (
+                    <div
+                      key={r.label}
+                      style={{
+                        display: "flex",
+                        gap: 16,
+                        justifyContent: "space-between",
+                        padding: "11px 0",
+                        borderBottom: "1px solid var(--color-surface)",
+                      }}
+                    >
+                      <span
+                        style={{
+                          fontSize: 12,
+                          color: "var(--color-neutral-600)",
+                          whiteSpace: "nowrap",
+                        }}
+                      >
+                        {r.label}
+                      </span>
+                      <span
+                        style={{
+                          fontSize: 12,
+                          color: "var(--color-neutral-300)",
+                          textAlign: "right",
+                          fontFamily: r.font,
+                          textWrap: "pretty",
+                        }}
+                      >
+                        {r.value}
+                      </span>
+                    </div>
+                  ))}
+                </div>
+              </section>
+
+              <section
+                style={{
+                  background: "var(--color-surface)",
+                  borderRadius: "var(--radius-md)",
+                  boxShadow: "var(--shadow-sm)",
+                }}
+              >
+                <div
+                  style={{
+                    padding: "14px 16px",
+                    borderBottom: "1px solid var(--color-neutral-900)",
+                    display: "flex",
+                    justifyContent: "space-between",
+                    alignItems: "center",
+                    gap: 10,
+                  }}
+                >
+                  <span
+                    style={{ fontFamily: "var(--font-heading)", fontSize: 14 }}
+                  >
+                    Tren skor risiko
+                  </span>
+                  <span
+                    style={{ fontSize: 11, color: "var(--color-neutral-600)" }}
+                  >
+                    0–100
+                  </span>
+                </div>
+                <div
+                  style={{
+                    padding: "20px 16px 14px",
+                    display: "flex",
+                    alignItems: "flex-end",
+                    gap: 10,
+                    height: 220,
+                  }}
+                >
+                  {trend.map((t, i) => {
+                    const ts = bandOf(t.band);
+                    return (
+                      <div
+                        key={i}
+                        style={{
+                          flex: 1,
+                          display: "flex",
+                          flexDirection: "column",
+                          alignItems: "center",
+                          gap: 8,
+                          height: "100%",
+                          justifyContent: "flex-end",
+                        }}
+                      >
+                        <span
+                          style={{
+                            fontFamily: MONO,
+                            fontSize: 11,
+                            color: "var(--color-neutral-500)",
+                          }}
+                        >
+                          {t.risk_score}
+                        </span>
+                        <div
+                          style={{
+                            width: "100%",
+                            borderRadius: "3px 3px 0 0",
+                            height: `${Math.max(3, Math.min(100, t.risk_score || 0))}%`,
+                            background: ts.color,
+                          }}
+                        />
+                        <span
+                          style={{
+                            fontFamily: MONO,
+                            fontSize: 10,
+                            color: "var(--color-neutral-700)",
+                          }}
+                        >
+                          {String(t.computed_at || "").slice(11, 16)}
+                        </span>
+                      </div>
+                    );
+                  })}
+                </div>
+              </section>
+            </div>
+
+            <button
+              className="btn-outline"
+              onClick={onAsk}
+              style={{
+                alignSelf: "flex-start",
+                padding: "10px 16px",
+                borderRadius: "var(--radius-md)",
+                border: "1px solid var(--color-accent)",
+                background: "transparent",
+                color: "var(--color-accent-300)",
+                fontFamily: "var(--font-body)",
+                fontSize: 13,
+                cursor: "pointer",
+              }}
+            >
+              Tanya asisten tentang host ini
             </button>
-          ))}
-        </div>
-        <div style={{ display:"flex", gap:10, alignItems:"center", background:"var(--color-surface)",
-                      borderRadius:"var(--radius-md)", boxShadow:"var(--shadow-sm)", padding:"8px 8px 8px 14px" }}>
-          <input value={input} onChange={e => setInput(e.target.value)} onKeyDown={e => { if (e.key === "Enter") submit(); }}
-            placeholder="Tanya tentang host, signature, atau teknik…"
-            style={{ flex:1, minWidth:0, background:"transparent", border:"none", outline:"none",
-                     color:"var(--color-text)", fontFamily:"var(--font-body)", fontSize:13, padding:"8px 0" }} />
-          <button className="btn-outline" onClick={() => submit()}
-            style={{ padding:"9px 16px", borderRadius:6, border:"1px solid var(--color-accent)", background:"transparent",
-                     color:"var(--color-accent-300)", fontFamily:"var(--font-body)", fontSize:13, cursor:"pointer" }}>
-            Kirim
-          </button>
-        </div>
-      </div>
-    </div>
-  );
-}
+          </div>
+        );
+      }
 
-/* ── Shell: routing sederhana + semua fetch ke REST API ──────────── */
-function SentinelOps() {
-  const [page, setPage] = useState("dashboard");
-  const [selectedIp, setSelectedIp] = useState(null);
-  const [hosts, setHosts] = useState([]);
-  const [events, setEvents] = useState([]);
-  const [detail, setDetail] = useState(null);
-  const [messages, setMessages] = useState([]);
-  const [pending, setPending] = useState(false);
-  const [sample, setSample] = useState(false);
-  const detailRef = useRef(null);
+      /* ── Halaman 4: Analyst Chat ─────────────────────────────────────── */
+      const CHIPS = [
+        "Apa itu port scan?",
+        "Arti SID 1000001?",
+        "Kenapa host ini dianggap berisiko?",
+        "Bedanya anomali statistik dan signature?",
+      ];
 
-  const get = useCallback(async (path, fallback) => {
-    try {
-      const ctl = new AbortController();
-      const t = setTimeout(() => ctl.abort(), 3500);
-      const res = await fetch(API + path, { signal: ctl.signal });
-      clearTimeout(t);
-      if (!res.ok) throw new Error(res.status);
-      return await res.json();
-    } catch (e) {
-      setSample(true);              // API tak terjangkau → pakai data contoh
-      return fallback;
-    }
-  }, []);
+      function Chat({ messages, pending, onSend }) {
+        const [input, setInput] = useState("");
+        const submit = (q) => {
+          const v = (q ?? input).trim();
+          if (!v) return;
+          setInput("");
+          onSend(v);
+        };
+        return (
+          <div
+            style={{
+              display: "flex",
+              flexDirection: "column",
+              gap: 18,
+              maxWidth: 900,
+              width: "100%",
+              flex: 1,
+            }}
+          >
+            <header
+              style={{ display: "flex", flexDirection: "column", gap: 5 }}
+            >
+              <h1
+                style={{
+                  margin: 0,
+                  fontFamily: "var(--font-heading)",
+                  fontWeight: 500,
+                  fontSize: 23,
+                  letterSpacing: "-0.01em",
+                }}
+              >
+                Analyst Chat
+              </h1>
+              <p
+                style={{
+                  margin: 0,
+                  color: "var(--color-neutral-500)",
+                  fontSize: 13,
+                }}
+              >
+                Jawaban selalu membawa sumber rujukan yang bisa dibuka.
+              </p>
+            </header>
 
-  const loadAssets = useCallback(async () => {
-    const d = await get("/assets", SAMPLE_ASSETS);
-    setHosts((d && d.hosts) || []);
-  }, [get]);
+            <div
+              style={{
+                display: "flex",
+                flexDirection: "column",
+                gap: 16,
+                flex: 1,
+              }}
+            >
+              {messages.map((m, i) => {
+                const isUser = m.role === "user";
+                return (
+                  <div
+                    key={i}
+                    style={{
+                      display: "flex",
+                      justifyContent: isUser ? "flex-end" : "flex-start",
+                    }}
+                  >
+                    <div
+                      style={{
+                        maxWidth: "78%",
+                        display: "flex",
+                        flexDirection: "column",
+                        gap: 10,
+                      }}
+                    >
+                      {isUser ? (
+                        <div
+                          style={{
+                            background: "var(--color-accent-900)",
+                            border: "1px solid var(--color-accent-800)",
+                            borderRadius: "var(--radius-md)",
+                            padding: "11px 14px",
+                            fontSize: 13,
+                            lineHeight: 1.55,
+                            color: "var(--color-text)",
+                          }}
+                        >
+                          {m.text}
+                        </div>
+                      ) : (
+                        <div
+                          style={{
+                            background: "var(--color-surface)",
+                            boxShadow: "var(--shadow-sm)",
+                            borderRadius: "var(--radius-md)",
+                            padding: "14px 16px",
+                          }}
+                        >
+                          <RichText text={m.text} />
+                        </div>
+                      )}
 
-  useEffect(() => {
-    loadAssets();
-    get("/timeline", SAMPLE_TIMELINE).then(d => setEvents((d && d.events) || []));
-    const id = setInterval(loadAssets, REFRESH_SECONDS * 1000);   // muat ulang otomatis
-    return () => clearInterval(id);
-  }, [get, loadAssets]);
+                      {!isUser && m.sources && m.sources.length > 0 && (
+                        <div
+                          style={{
+                            display: "flex",
+                            flexDirection: "column",
+                            gap: 7,
+                          }}
+                        >
+                          <span
+                            style={{
+                              fontSize: 10,
+                              letterSpacing: "0.08em",
+                              textTransform: "uppercase",
+                              color: "var(--color-neutral-600)",
+                            }}
+                          >
+                            Sumber rujukan
+                          </span>
+                          <div
+                            style={{
+                              display: "flex",
+                              flexWrap: "wrap",
+                              gap: 8,
+                            }}
+                          >
+                            {m.sources.map((src, j) => (
+                              <a
+                                key={j}
+                                className="cite"
+                                href={src.source_url}
+                                target="_blank"
+                                rel="noopener"
+                                style={{
+                                  display: "flex",
+                                  flexDirection: "column",
+                                  gap: 3,
+                                  padding: "9px 12px",
+                                  borderRadius: "var(--radius-md)",
+                                  border: "1px solid var(--color-accent-700)",
+                                  background: "var(--color-accent-900)",
+                                  textDecoration: "none",
+                                  maxWidth: 320,
+                                }}
+                              >
+                                <span
+                                  style={{
+                                    display: "flex",
+                                    alignItems: "baseline",
+                                    gap: 7,
+                                  }}
+                                >
+                                  <span
+                                    style={{
+                                      fontFamily: MONO,
+                                      fontSize: 12,
+                                      color: "var(--color-accent-300)",
+                                    }}
+                                  >
+                                    {src.technique_id}
+                                  </span>
+                                  <span
+                                    style={{ color: "var(--color-accent-700)" }}
+                                  >
+                                    ·
+                                  </span>
+                                  <span
+                                    style={{
+                                      fontSize: 12,
+                                      color: "var(--color-text)",
+                                    }}
+                                  >
+                                    {src.name}
+                                  </span>
+                                </span>
+                                <span
+                                  style={{
+                                    fontSize: 10,
+                                    color: "var(--color-neutral-500)",
+                                  }}
+                                >
+                                  {src.source_doc}
+                                  {src.sids && src.sids.length
+                                    ? `  ·  SID ${src.sids.join(", ")}`
+                                    : ""}
+                                </span>
+                              </a>
+                            ))}
+                          </div>
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                );
+              })}
+              {pending && (
+                <div
+                  style={{
+                    fontSize: 12,
+                    color: "var(--color-neutral-600)",
+                    fontFamily: MONO,
+                  }}
+                >
+                  asisten menyusun jawaban…
+                </div>
+              )}
+            </div>
 
-  const openHost = async (ip) => {
-    setSelectedIp(ip); setDetail(null); setPage("detail");
-    const d = await get("/assets/" + encodeURIComponent(ip), sampleDetail(ip));
-    detailRef.current = d;
-    setDetail(d);
-  };
+            <div
+              style={{
+                display: "flex",
+                flexDirection: "column",
+                gap: 10,
+                position: "sticky",
+                bottom: 0,
+                background: "var(--color-bg)",
+                paddingTop: 10,
+              }}
+            >
+              <div style={{ display: "flex", flexWrap: "wrap", gap: 8 }}>
+                {CHIPS.map((c) => (
+                  <button
+                    key={c}
+                    className="chip"
+                    onClick={() => submit(c)}
+                    style={{
+                      padding: "7px 12px",
+                      borderRadius: 20,
+                      border: "1px solid var(--color-neutral-800)",
+                      background: "transparent",
+                      color: "var(--color-neutral-400)",
+                      fontFamily: "var(--font-body)",
+                      fontSize: 12,
+                      cursor: "pointer",
+                    }}
+                  >
+                    {c}
+                  </button>
+                ))}
+              </div>
+              <div
+                style={{
+                  display: "flex",
+                  gap: 10,
+                  alignItems: "center",
+                  background: "var(--color-surface)",
+                  borderRadius: "var(--radius-md)",
+                  boxShadow: "var(--shadow-sm)",
+                  padding: "8px 8px 8px 14px",
+                }}
+              >
+                <input
+                  value={input}
+                  onChange={(e) => setInput(e.target.value)}
+                  onKeyDown={(e) => {
+                    if (e.key === "Enter") submit();
+                  }}
+                  placeholder="Tanya tentang host, signature, atau teknik…"
+                  style={{
+                    flex: 1,
+                    minWidth: 0,
+                    background: "transparent",
+                    border: "none",
+                    outline: "none",
+                    color: "var(--color-text)",
+                    fontFamily: "var(--font-body)",
+                    fontSize: 13,
+                    padding: "8px 0",
+                  }}
+                />
+                <button
+                  className="btn-outline"
+                  onClick={() => submit()}
+                  style={{
+                    padding: "9px 16px",
+                    borderRadius: 6,
+                    border: "1px solid var(--color-accent)",
+                    background: "transparent",
+                    color: "var(--color-accent-300)",
+                    fontFamily: "var(--font-body)",
+                    fontSize: 13,
+                    cursor: "pointer",
+                  }}
+                >
+                  Kirim
+                </button>
+              </div>
+            </div>
+          </div>
+        );
+      }
 
-  const ask = async (query) => {
-    const q = String(query || "").trim();
-    if (!q) return;
-    setPage("chat");
-    setMessages(m => [...m, { role:"user", text:q }]);
-    setPending(true);
-    let data;
-    try {
-      const res = await fetch(API + "/chat", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ query: q }),
-      });
-      if (!res.ok) throw new Error(res.status);
-      data = await res.json();
-    } catch (e) {
-      data = SAMPLE_CHAT;
-      setSample(true);
-    }
-    setPending(false);
-    setMessages(m => [...m, { role:"assistant", text:data.answer, sources:data.sources || [] }]);
-  };
+      /* ── Shell: routing sederhana + semua fetch ke REST API ──────────── */
+      function SentinelOps() {
+        const [page, setPage] = useState("dashboard");
+        const [selectedIp, setSelectedIp] = useState(null);
+        const [hosts, setHosts] = useState([]);
+        const [events, setEvents] = useState([]);
+        const [detail, setDetail] = useState(null);
+        const [messages, setMessages] = useState([]);
+        const [pending, setPending] = useState(false);
+        const [sample, setSample] = useState(false);
+        const detailRef = useRef(null);
 
-  const askAboutHost = () => {
-    const d = detailRef.current;
-    const ip = (d && d.ip) || selectedIp;
-    const band = (d && d.band) || "berisiko";
-    ask(`Kenapa host ${ip} dianggap ${band}? Jelaskan alasannya.`);
-  };
+        const get = useCallback(async (path, fallback) => {
+          try {
+            const ctl = new AbortController();
+            const t = setTimeout(() => ctl.abort(), 3500);
+            const res = await fetch(API + path, { signal: ctl.signal });
+            clearTimeout(t);
+            if (!res.ok) throw new Error(res.status);
+            return await res.json();
+          } catch (e) {
+            setSample(true); // API tak terjangkau → pakai data contoh
+            return fallback;
+          }
+        }, []);
 
-  return (
-    <div style={{ display:"flex", minHeight:"100vh", background:"var(--color-bg)", color:"var(--color-text)",
-                  fontFamily:"var(--font-body)", fontSize:14 }}>
-      <Sidebar page={page} setPage={setPage} hasHost={!!selectedIp} sample={sample} />
-      <main style={{ flex:1, minWidth:0, padding:"28px 32px 56px", display:"flex", flexDirection:"column", gap:24 }}>
-        {page === "dashboard" && <Dashboard hosts={hosts} onOpenHost={openHost} />}
-        {page === "timeline"  && <Timeline events={events} />}
-        {page === "detail"    && <HostDetail ip={selectedIp} detail={detail} onBack={() => setPage("dashboard")} onAsk={askAboutHost} />}
-        {page === "chat"      && <Chat messages={messages} pending={pending} onSend={ask} />}
-      </main>
-    </div>
-  );
-}
+        const loadAssets = useCallback(async () => {
+          const d = await get("/assets", SAMPLE_ASSETS);
+          setHosts((d && d.hosts) || []);
+        }, [get]);
 
-ReactDOM.createRoot(document.getElementById("root")).render(<SentinelOps />);
-</script>
-</body>
+        useEffect(() => {
+          loadAssets();
+          get("/timeline", SAMPLE_TIMELINE).then((d) =>
+            setEvents((d && d.events) || []),
+          );
+          const id = setInterval(loadAssets, REFRESH_SECONDS * 1000); // muat ulang otomatis
+          return () => clearInterval(id);
+        }, [get, loadAssets]);
+
+        const openHost = async (ip) => {
+          setSelectedIp(ip);
+          setDetail(null);
+          setPage("detail");
+          const d = await get(
+            "/assets/" + encodeURIComponent(ip),
+            sampleDetail(ip),
+          );
+          detailRef.current = d;
+          setDetail(d);
+        };
+
+        const ask = async (query) => {
+          const q = String(query || "").trim();
+          if (!q) return;
+          setPage("chat");
+          setMessages((m) => [...m, { role: "user", text: q }]);
+          setPending(true);
+          let data;
+          try {
+            const res = await fetch(API + "/chat", {
+              method: "POST",
+              headers: { "Content-Type": "application/json" },
+              body: JSON.stringify({ query: q }),
+            });
+            if (!res.ok) throw new Error(res.status);
+            data = await res.json();
+          } catch (e) {
+            data = SAMPLE_CHAT;
+            setSample(true);
+          }
+          setPending(false);
+          setMessages((m) => [
+            ...m,
+            {
+              role: "assistant",
+              text: data.answer,
+              sources: data.sources || [],
+            },
+          ]);
+        };
+
+        const askAboutHost = () => {
+          const d = detailRef.current;
+          const ip = (d && d.ip) || selectedIp;
+          const band = (d && d.band) || "berisiko";
+          ask(`Kenapa host ${ip} dianggap ${band}? Jelaskan alasannya.`);
+        };
+
+        return (
+          <div
+            style={{
+              display: "flex",
+              minHeight: "100vh",
+              background: "var(--color-bg)",
+              color: "var(--color-text)",
+              fontFamily: "var(--font-body)",
+              fontSize: 14,
+            }}
+          >
+            <Sidebar
+              page={page}
+              setPage={setPage}
+              hasHost={!!selectedIp}
+              sample={sample}
+            />
+            <main
+              style={{
+                flex: 1,
+                minWidth: 0,
+                padding: "28px 32px 56px",
+                display: "flex",
+                flexDirection: "column",
+                gap: 24,
+              }}
+            >
+              {page === "dashboard" && (
+                <Dashboard hosts={hosts} onOpenHost={openHost} />
+              )}
+              {page === "timeline" && <Timeline events={events} />}
+              {page === "detail" && (
+                <HostDetail
+                  ip={selectedIp}
+                  detail={detail}
+                  onBack={() => setPage("dashboard")}
+                  onAsk={askAboutHost}
+                />
+              )}
+              {page === "chat" && (
+                <Chat messages={messages} pending={pending} onSend={ask} />
+              )}
+            </main>
+          </div>
+        );
+      }
+
+      ReactDOM.createRoot(document.getElementById("root")).render(
+        <SentinelOps />,
+      );
+    </script>
+  </body>
 </html>
