@@ -1,3 +1,3 @@
 [build]
-start = "uvicorn sentinelops.main:app --host 0.0.0.0 --port $PORT"
+start = "uvicorn api.main:app --host 0.0.0.0 --port $PORT"
 
