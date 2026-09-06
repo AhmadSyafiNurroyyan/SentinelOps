@@ -9,11 +9,15 @@ import time
 import requests
 
 def baca_baris_baru(filepath, offset_terakhir):
+    hasil = []
     with open(filepath, "r") as f:
         f.seek(offset_terakhir)
-        daftar_baris_baru = f.readlines()
-        offset_baru = f.tell()
-    return daftar_baris_baru, offset_baru
+        while True:
+            baris = f.readline()
+            if not baris:
+                break
+            hasil.append((baris, f.tell()))
+    return hasil
 
 def simpan_offset(state_file, offset):
     with open(state_file, "w") as f:
@@ -27,16 +31,16 @@ def baca_offset_tersimpan(state_file):
     except (FileNotFoundError, ValueError):
         return 0
 
-def parse_baris(baris_list):
+def parse_baris(baris_dengan_offset):
     hasil = []
-    for baris in baris_list:
-        baris = baris.strip()
-        if not baris:
+    for baris, offset in baris_dengan_offset:
+        baris_bersih = baris.strip()
+        if not baris_bersih:
             continue
         try:
-            hasil.append(json.loads(baris))
+            hasil.append((json.loads(baris_bersih), offset))
         except json.JSONDecodeError:
-            print(f"[shipper] WARNING: baris rusak, dilewati: {baris[:80]}...")
+            print(f"[shipper] WARNING: baris rusak, dilewati: {baris_bersih[:80]}...")
     return hasil
 
 
@@ -67,6 +71,22 @@ def kirim_batch(api_url, secret, events, timeout=10):
         print(f"[shipper] Gagal kirim (network/API mati?): {e}")
         return False
 
+
+def proses_pengiriman(buffer, offset, api_url, secret, state_file, batch_size, kirim_sisa=False):
+    while buffer and (len(buffer) >= batch_size or kirim_sisa):
+        potongan = buffer[:batch_size] if len(buffer) >= batch_size else buffer[:]
+        events = [e for e, _ in potongan]
+        if kirim_batch(api_url, secret, events):
+            offset = potongan[-1][1]
+            simpan_offset(state_file, offset)
+            buffer = buffer[len(potongan):]
+        else:
+            print("[shipper] Batch gagal terkirim, akan dicoba lagi "
+                  f"({len(buffer)} event masih tertahan di buffer).")
+            break
+    return buffer, offset
+
+
 def main():
     parser = argparse.ArgumentParser(description="Log shipper: eve.json -> API SentinelOps")
     parser.add_argument("--eve-path", default="/var/log/suricata/eve.json",
@@ -94,7 +114,7 @@ def main():
     offset_baca = offset
     print(f"[shipper] Mulai dari offset {offset} (file: {args.eve_path})")
 
-    buffer = []
+    buffer = []  
     waktu_buffer_mulai = None
 
     try:
@@ -114,30 +134,32 @@ def main():
                 buffer = []
                 waktu_buffer_mulai = None
 
-            baris_baru, offset_baru = baca_baris_baru(args.eve_path, offset_baca)
-            offset_baca = offset_baru
-
+            baris_baru = baca_baris_baru(args.eve_path, offset_baca)
             if baris_baru:
-                events = parse_baris(baris_baru)
-                if events and not buffer:
-                    waktu_buffer_mulai = time.time()
-                buffer.extend(events)
+                offset_baca = baris_baru[-1][1]
+
+            events_dengan_offset = parse_baris(baris_baru)
+            if events_dengan_offset and not buffer:
+                waktu_buffer_mulai = time.time()
+            buffer.extend(events_dengan_offset)
+            buffer, offset = proses_pengiriman(
+                buffer, offset, args.api_url, args.secret, args.state_file, args.batch_size
+            )
+            if not buffer:
+                waktu_buffer_mulai = None
 
             waktu_habis = (
                 waktu_buffer_mulai is not None
                 and (time.time() - waktu_buffer_mulai) >= args.batch_timeout
             )
 
-            if buffer and (len(buffer) >= args.batch_size or waktu_habis):
-                sukses = kirim_batch(args.api_url, args.secret, buffer)
-                if sukses:
-                    offset = offset_baca
-                    simpan_offset(args.state_file, offset)
-                    buffer = []
+            if buffer and waktu_habis:
+                buffer, offset = proses_pengiriman(
+                    buffer, offset, args.api_url, args.secret, args.state_file,
+                    args.batch_size, kirim_sisa=True,
+                )
+                if not buffer:
                     waktu_buffer_mulai = None
-                else:
-                    print("[shipper] Batch gagal terkirim, akan dicoba lagi "
-                          f"({len(buffer)} event masih tertahan di buffer).")
 
             if args.exit_when_caught_up and not baris_baru and not buffer:
                 print("[shipper] Sudah tidak ada baris baru dan buffer kosong -> "
