@@ -1,21 +1,3 @@
-"""
-Unduh bundle MITRE ATT&CK Enterprise (STIX 2.1) dan ekstrak technique
-yang relevan dengan skenario lab SentinelOps.
-
-Jalankan dari root repo:
-    python corpus/build_attack.py
-
-Output:
-    corpus/raw/enterprise-attack-19.1.json   (mentah, tidak di-commit)
-    corpus/attack_techniques.json            (hasil ekstraksi, di-commit)
-
-Catatan versi:
-    ATT&CK v18 ke atas TIDAK lagi menyimpan panduan deteksi di field
-    x_mitre_detection. Panduan itu sekarang ada di objek
-    x-mitre-detection-strategy yang menunjuk ke x-mitre-analytic lewat
-    x_mitre_analytic_refs. Skrip ini mengikuti struktur baru tersebut.
-"""
-
 import json
 import os
 import sys
@@ -32,10 +14,6 @@ HERE = os.path.dirname(os.path.abspath(__file__))
 RAW_DIR = os.path.join(HERE, "raw")
 RAW_PATH = os.path.join(RAW_DIR, f"enterprise-attack-{ATTACK_VERSION}.json")
 OUT_PATH = os.path.join(HERE, "attack_techniques.json")
-
-# Technique yang relevan dengan 4 skenario lab.
-# Tambah atau kurangi setelah melihat SID apa saja yang benar-benar
-# muncul di eve.json milik Ryan.
 TECHNIQUES = [
     "T1046",  # Network Service Discovery (Nmap SYN / NULL scan)
     "T1595",  # Active Scanning
@@ -47,7 +25,6 @@ TECHNIQUES = [
 
 
 def download():
-    """Unduh bundle kalau belum ada. File 51 MB, jadi hanya sekali."""
     os.makedirs(RAW_DIR, exist_ok=True)
     if os.path.exists(RAW_PATH):
         size_mb = os.path.getsize(RAW_PATH) / 1048576
@@ -69,17 +46,14 @@ def download():
 
 
 def external_id(obj):
-    """Technique ID (T1046 dsb) tersembunyi di external_references."""
     for ref in obj.get("external_references", []):
         if ref.get("source_name") == "mitre-attack":
             return ref.get("external_id")
     return None
 
-
 def extract(objects, wanted):
     by_id = {o["id"]: o for o in objects}
 
-    # 1. Kumpulkan technique yang dicari, buang yang deprecated/revoked.
     techniques = {}
     for obj in objects:
         if obj["type"] != "attack-pattern":
@@ -93,8 +67,6 @@ def extract(objects, wanted):
     missing = wanted - set(techniques.values())
     if missing:
         print(f"[warn]  Tidak ditemukan: {sorted(missing)}")
-
-    # 2. Telusuri relationship untuk mitigasi dan strategi deteksi.
     mitigations = {sid: [] for sid in techniques}
     strategies = {sid: [] for sid in techniques}
 
@@ -114,7 +86,6 @@ def extract(objects, wanted):
         elif rtype == "detects" and source["type"] == "x-mitre-detection-strategy":
             strategies[target].append(source)
 
-    # 3. Rakit hasil.
     result = []
     for sid, tid in techniques.items():
         obj = by_id[sid]

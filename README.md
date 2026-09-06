@@ -1,210 +1,168 @@
 # SentinelOps
 
-**Lapisan interpretasi keamanan jaringan untuk institusi tanpa tim SOC.**
+**Virtual SOC Analyst** untuk kampus, UMKM, dan instansi daerah yang memiliki
+sensor jaringan tetapi belum memiliki tim SOC khusus. SentinelOps menjadi
+lapisan analitik di atas Suricata: log `eve.json` dikumpulkan, diringkas menjadi
+prioritas risiko per host, lalu dijelaskan dalam Bahasa Indonesia melalui
+chatbot RAG dengan sitasi.
 
-SentinelOps membaca lalu lintas jaringan dari Suricata, memberi skor risiko
-per host secara statistik, dan menjelaskan setiap peringatan dalam Bahasa
-Indonesia melalui asisten berbasis RAG dengan rujukan sumber. Ditujukan untuk
-sekolah, kampus, puskesmas, dan instansi daerah yang memiliki jaringan sendiri
-tetapi tidak memiliki tim keamanan khusus.
+Dibangun untuk HoloDev, HOLOGY 9.0 (Universitas Brawijaya), subtema
+**Infrastruktur Sosial**.
 
-Dikembangkan untuk HoloDev, HOLOGY 9.0, Universitas Brawijaya.
-Subtema: Infrastruktur Sosial.
+## Konsep dan fitur utama
 
----
+SentinelOps menggunakan arsitektur **dual-engine**:
 
-## Prinsip Desain
+1. **Statistical Risk Scoring** membandingkan traffic terbaru dengan baseline
+   historis menggunakan percentile scoring pada enam fitur perilaku jaringan.
+2. **Virtual SOC Analyst (RAG)** menerjemahkan SID dan konteks ancaman melalui
+   hybrid search FAISS + BM25 dan Reciprocal Rank Fusion (RRF), dengan sumber
+   MITRE ATT&CK dan ET Open.
 
-- **Read-only advisory.** Sistem hanya mengamati dan memberi saran. Tidak
-  pernah memblokir, memutus, atau mengambil tindakan otomatis. Keputusan akhir
-  tetap di tangan manusia. Ini keputusan desain yang disengaja, bukan
-  keterbatasan.
-- **Dua pipeline terpisah.** Peringatan (`alert`) dari Suricata diterjemahkan
-  oleh mesin RAG. Data aliran (`flow`/`stats`) dinilai secara statistik untuk
-  menangkap anomali yang tidak memicu signature apa pun. Pemisahan ini adalah
-  inti kontribusi sistem.
-- **Data tidak meninggalkan jaringan.** Perhitungan skor berjalan lokal. Yang
-  dikirim ke API bahasa hanya teks pertanyaan dan potongan dokumen publik,
-  bukan log jaringan institusi.
+Fitur yang tersedia:
 
----
+- matriks risiko aset yang diurutkan berdasarkan skor;
+- timeline dengan atribusi `signature` atau `statistical`;
+- chatbot RAG dengan sitasi; dan
+- API ingest dengan HMAC-SHA256 serta replay protection.
 
-## Arsitektur Singkat
+Sistem bersifat **advisory-only/read-only**: tidak memblokir IP, mengubah
+firewall, atau menjalankan mitigasi otomatis. Scoring dan penyimpanan event
+berjalan lokal; hanya pertanyaan dan konteks corpus publik yang dikirim ke
+Gemini.
 
+## Arsitektur singkat
+
+```text
+Suricata (eve.json)
+        |
+        v
+Log Shipper -- HMAC --> FastAPI (/ingest)
+                            |             |
+                            v             v
+                   Statistical Scoring   RAG Engine
+                            |             |
+                            +------> SQLite
+                                      |
+                                      v
+                         API (/assets, /timeline, /chat)
+                                      |
+                                      v
+                                Dashboard web
 ```
-  Suricata (eve.json)
-        │
-        ▼
-  Log Shipper  ──HMAC──▶  FastAPI (/ingest)
-                              │
-                 ┌────────────┴────────────┐
-                 ▼                          ▼
-        Pipeline Statistik          Pipeline RAG
-        (flow/stats → skor)         (alert → penjelasan)
-                 │                          │
-                 ▼                          ▼
-              Database  ◀──────────  Scoring Engine
-                 │
-                 ▼
-          FastAPI (/assets, /timeline, /chat)
-                 │
-                 ▼
-          Dashboard (React)
+
+## Struktur project
+
+```text
+sentinelops/
+├── api/                         Backend FastAPI dan logika analitik
+│   ├── main.py                 Endpoint API dan integrasi dashboard
+│   ├── db.py                   Skema dan query SQLite terparameterisasi
+│   ├── schemas.py              Validasi dan flattening event Suricata
+│   ├── scoring.py              Baseline dan percentile scoring
+│   ├── security.py             HMAC-SHA256 dan replay protection
+│   └── rag_loader.py           Memuat engine RAG
+├── agent/shipper.py             Tail eve.json dan kirim batch bertanda tangan
+├── corpus/                      Pipeline corpus dan retrieval RAG
+│   ├── build_attack.py         Ekstraksi MITRE ATT&CK
+│   ├── parse_et_rules.py       Parsing Emerging Threats rules
+│   ├── build_corpus.py         Membuat chunks bilingual
+│   ├── indexer.py              FAISS dan BM25 index
+│   ├── engine.py               Hybrid retrieval dan Gemini
+│   ├── prompts.py              System prompt SOC analyst
+│   └── eval_retrieval.py       Evaluasi kualitas retrieval
+├── scripts/setup_data.py        Orkestrasi setup corpus dan index
+├── security/                    Baseline dan skenario pengujian
+├── docs/                        Threat model, evaluasi, dan lisensi
+├── web/                         Dashboard frontend
+├── requirements.txt             Dependensi Python
+└── .gitignore                   Secret dan artefak runtime
 ```
 
----
+## Menjalankan secara lokal
 
-## Teknologi
+Prasyarat: Python 3.10+, Gemini API key, dan dependensi pada
+`requirements.txt`.
 
-**Backend:** Python 3.10, FastAPI, Uvicorn, SQLite
-**RAG:** FAISS (pencarian vektor), BM25 (pencarian kata kunci), Reciprocal
-Rank Fusion, embedding dan generasi via Gemini API
-**Basis pengetahuan:** MITRE ATT&CK Enterprise v19.1, Emerging Threats Open
-ruleset
-**Frontend:** React
-**Agent:** Log Shipper (Python) dengan penandatanganan HMAC-SHA256
-
----
-
-## Kebutuhan Lingkungan
-
-- Python 3.10 atau lebih baru
-- Sebuah Gemini API key (untuk embedding dan chatbot)
-- Sistem operasi: diuji pada Windows 10/11 dan Linux
-- RAM minimal 1 GB untuk layanan backend
-
----
-
-## Cara Menjalankan
-
-### 1. Siapkan lingkungan
-
-```bash
+```powershell
 git clone https://github.com/RusdiansyahAlief19/SentinelOps.git
 cd SentinelOps
 python -m venv .venv
-# Windows:
 .venv\Scripts\Activate.ps1
-# Linux/Mac:
-source .venv/bin/activate
 pip install -r requirements.txt
 ```
 
-### 2. Konfigurasi
+Buat `.env` di root:
 
-Buat file `.env` di direktori utama (tidak disertakan dalam repositori demi
-keamanan):
-
-```
-GEMINI_API_KEY=kunci_api_anda
-SENTINELOPS_HMAC_SECRET=rahasia_bersama_untuk_shipper
+```dotenv
+GEMINI_API_KEY=isi_key_anda
+SENTINELOPS_HMAC_SECRET=ganti_dengan_secret_acak
 ```
 
-### 3. Bangun basis pengetahuan RAG
+Siapkan corpus dan index:
 
-Dijalankan sekali di awal (mengunduh MITRE ATT&CK, membangun indeks):
-
-```bash
-python corpus/build_attack.py
-python corpus/build_corpus.py
-python corpus/indexer.py
+```powershell
+python scripts\setup_data.py
 ```
 
-### 4. Jalankan backend
+Untuk membangun corpus tanpa ringkasan Gemini, gunakan `--dry-run`. Opsi ini
+tidak menonaktifkan Gemini pada tahap embedding; gunakan `--skip-index` jika
+ingin validasi lokal tanpa API:
 
-```bash
-uvicorn api.main:app --port 8000
+```powershell
+python scripts\setup_data.py --dry-run --skip-index
 ```
 
-Dokumentasi API otomatis tersedia di `http://localhost:8000/docs`.
+Jalankan backend:
 
-### 5. Jalankan frontend
+```powershell
+uvicorn api.main:app --reload --port 8000
+```
 
-Dari terminal terpisah:
+Dokumentasi OpenAPI tersedia di `http://localhost:8000/docs`.
 
-```bash
+Jalankan dashboard sederhana pada terminal lain:
+
+```powershell
 cd web
 python -m http.server 5500
 ```
 
-Buka `http://localhost:5500` di peramban.
+Buka `http://localhost:5500`. URL backend dikonfigurasi pada konstanta `API` di
+`web/index.html`.
 
-> Catatan: alamat backend diatur pada konstanta `API` di bagian atas
-> `web/index.html`. Ubah ke URL produksi saat aplikasi di-deploy.
+## Memasukkan data dan menghitung skor
 
----
-
-## Memasukkan Data Jaringan
-
-Sistem menerima data dari Suricata melalui Log Shipper. Untuk memasukkan
-berkas `eve.json` (baik dari Suricata langsung maupun berkas historis):
-
-```bash
-python agent/shipper.py \
-  --eve-path "path/ke/eve.json" \
-  --api-url "http://127.0.0.1:8000/ingest" \
-  --secret "rahasia_yang_sama_dengan_env" \
+```powershell
+python agent\shipper.py `
+  --eve-path C:\path\ke\eve.json `
+  --api-url http://127.0.0.1:8000/ingest `
+  --secret $env:SENTINELOPS_HMAC_SECRET `
   --exit-when-caught-up
 ```
 
-Setelah data masuk, hitung skor risiko dengan membandingkan periode serangan
-terhadap baseline normal:
+Scoring dilakukan dengan membandingkan periode observasi terhadap baseline:
 
-```bash
-python api/scoring.py \
-  --baseline-start "<waktu_mulai_baseline>" \
-  --baseline-end   "<waktu_selesai_baseline>" \
-  --window-start   "<waktu_mulai_window>" \
-  --window-end     "<waktu_selesai_window>" \
+```powershell
+python api\scoring.py `
+  --baseline-start "<waktu_mulai_baseline>" `
+  --baseline-end "<waktu_selesai_baseline>" `
+  --window-start "<waktu_mulai_window>" `
+  --window-end "<waktu_selesai_window>" `
   --window-minutes 1
 ```
 
-Catatan: panjang window serangan harus sama dengan ukuran window baseline,
-agar perbandingan setara.
+Ukuran window observasi harus sama dengan ukuran window baseline agar hasil
+perbandingan valid.
 
----
+## Dokumentasi dan keterbatasan
 
-## Akun Demo
+- `docs/threat_model.md` — analisis STRIDE dan risiko residual.
+- `docs/LICENSES.md` — lisensi serta atribusi sumber data.
+- `docs/retrieval-eval.md` — evaluasi retrieval RAG.
+- `security/README.md` — metodologi dan bukti validasi keamanan.
 
-Sistem tidak menggunakan login pada versi ini (single-tenant, satu
-administrator). Seluruh fungsi dapat diakses langsung setelah aplikasi
-berjalan. Data contoh akan tampil otomatis apabila backend belum terhubung.
-
----
-
-## Struktur Direktori
-
-```
-sentinelops/
-├── api/            Layanan FastAPI
-│   ├── main.py     Endpoint: /ingest /assets /timeline /chat /health
-│   ├── db.py       Skema SQLite dan kueri (parameterized)
-│   ├── schemas.py  Validasi Pydantic dan transformasi event
-│   ├── scoring.py  Perhitungan skor risiko per host
-│   └── security.py Verifikasi HMAC untuk ingest
-├── agent/          Log Shipper
-├── corpus/         Pipeline basis pengetahuan RAG
-├── docs/           Dokumentasi teknis, lisensi, evaluasi
-├── web/            Dashboard frontend
-└── requirements.txt
-```
-
----
-
-## Dokumen Pendukung
-
-- `docs/LICENSES.md` — lisensi dan atribusi seluruh sumber data
-- `docs/retrieval-eval.md` — hasil evaluasi retrieval RAG
-- `docs/threat_model.md` — analisis STRIDE terhadap sistem sendiri
-- `http://localhost:8000/docs` — dokumentasi API (OpenAPI) otomatis
-
----
-
-## Keterbatasan yang Disadari
-
-Sistem ini menggunakan deteksi berbasis anomali statistik, sehingga dapat
-menghasilkan positif palsu pada host dengan pola lalu lintas tidak biasa.
-Karena itu sistem bersifat advisory, keputusan akhir tetap pada analis
-manusia. Baseline pada demonstrasi direkam dalam periode terbatas di
-laboratorium terkendali; pada penerapan nyata, baseline dikumpulkan secara
-rolling dalam periode yang lebih panjang.
+Artefak `corpus/raw/`, `faiss_index/`, `bm25_index.pkl`, database SQLite,
+`.env`, dan log runtime tidak dilacak Git. Endpoint baca belum menyediakan
+autentikasi pada versi prototipe; deployment produksi memerlukan autentikasi,
+HTTPS/TLS, rate limiting, serta kebijakan retensi data.

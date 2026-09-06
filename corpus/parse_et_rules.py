@@ -1,22 +1,3 @@
-"""
-Parser Emerging Threats Open ruleset untuk SentinelOps.
-
-Jalankan dari root repo:
-    python corpus/parse_et_rules.py
-
-Input:
-    corpus/raw/suricata.rules
-Output:
-    corpus/et_rules.json
-
-Yang diekstrak per rule: sid, rev, msg, classtype, protocol, arah,
-reference, dan technique_id MITRE bila rule-nya mencantumkan metadata.
-
-Catatan: tidak semua rule ET Open punya metadata MITRE. Cakupannya
-parsial, dan itu wajar. SID yang tidak terpetakan otomatis dipetakan
-manual belakangan (jumlahnya sedikit untuk skenario lab kita).
-"""
-
 import json
 import os
 import re
@@ -26,8 +7,6 @@ from collections import Counter
 HERE = os.path.dirname(os.path.abspath(__file__))
 IN_PATH = os.path.join(HERE, "raw", "suricata.rules")
 OUT_PATH = os.path.join(HERE, "et_rules.json")
-
-# Header rule: action proto src sport arah dst dport
 RE_HEADER = re.compile(
     r"^(?P<action>alert|drop|pass|reject)\s+"
     r"(?P<proto>\S+)\s+"
@@ -36,7 +15,6 @@ RE_HEADER = re.compile(
     r"(?P<dst>\S+)\s+(?P<dport>\S+)\s*\("
 )
 
-# msg boleh mengandung karakter yang di-escape, jadi jangan pakai [^"]*
 RE_MSG = re.compile(r'\bmsg\s*:\s*"((?:[^"\\]|\\.)*)"')
 RE_SID = re.compile(r"\bsid\s*:\s*(\d+)")
 RE_REV = re.compile(r"\brev\s*:\s*(\d+)")
@@ -46,11 +24,6 @@ RE_METADATA = re.compile(r"\bmetadata\s*:\s*([^;]+);")
 
 
 def join_continuations(lines):
-    """
-    Rule ET boleh dipecah beberapa baris dengan backslash di ujung.
-    Gabungkan dulu sebelum di-parse, kalau tidak rule panjang akan
-    terbaca terpotong dan sid-nya hilang.
-    """
     buffer = ""
     for raw in lines:
         line = raw.rstrip("\n")
@@ -64,10 +37,6 @@ def join_continuations(lines):
 
 
 def parse_metadata(text):
-    """
-    Format: 'created_at 2010_07_30, mitre_technique_id T1046, ...'
-    Dipisah koma, lalu kata pertama jadi kunci, sisanya jadi nilai.
-    """
     out = {}
     for item in text.split(","):
         item = item.strip()
@@ -78,7 +47,6 @@ def parse_metadata(text):
             out[parts[0]] = parts[1].strip()
     return out
 
-
 def parse_rule(line):
     header = RE_HEADER.match(line)
     if not header:
@@ -86,7 +54,7 @@ def parse_rule(line):
 
     sid = RE_SID.search(line)
     if not sid:
-        return None  # rule tanpa sid tidak berguna untuk kita
+        return None 
 
     msg = RE_MSG.search(line)
     rev = RE_REV.search(line)
@@ -126,7 +94,6 @@ def parse_rule(line):
         "source_doc": "Emerging Threats Open ruleset",
     }
 
-
 def main():
     if not os.path.exists(IN_PATH):
         print(f"[gagal] Tidak ada {IN_PATH}", file=sys.stderr)
@@ -155,7 +122,6 @@ def main():
         else:
             unparsed += 1
 
-    # SID unik, ambil rev tertinggi bila ada duplikat
     by_sid = {}
     for r in rules:
         prev = by_sid.get(r["sid"])
@@ -185,7 +151,6 @@ def main():
     print("Classtype terbanyak:")
     for ct, n in Counter(r["classtype"] for r in rules if r["classtype"]).most_common(5):
         print(f"  {ct:<28} {n:,}")
-
 
 if __name__ == "__main__":
     main()

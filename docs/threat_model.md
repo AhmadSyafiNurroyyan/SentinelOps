@@ -1,107 +1,156 @@
-# SentinelOps — Threat Model (STRIDE)
+# Model Ancaman SentinelOps
 
-## 1. Ruang Lingkup & Metodologi
+## 1. Tujuan dan ruang lingkup
 
-Dokumen ini menganalisis arsitektur SentinelOps menggunakan metodologi **STRIDE**
-(Spoofing, Tampering, Repudiation, Information Disclosure, Denial of Service, Elevation of
-Privilege). Analisis dilakukan per komponen dan per alur data, dengan merujuk langsung pada
-kode yang telah dibangun tim (`shipper.py`, `security.py`, `db.py`, `main.py`).
+Dokumen ini mendeskripsikan model ancaman dan kontrol keamanan SentinelOps
+berdasarkan arsitektur serta kode yang tersedia di repository. Analisis
+menggunakan kerangka **STRIDE**:
 
-## 2. Batas Kepercayaan (Trust Boundaries)
+- **Spoofing** — penyamaran identitas;
+- **Tampering** — perubahan data atau proses tanpa otorisasi;
+- **Repudiation** — penyangkalan terhadap suatu aktivitas;
+- **Information Disclosure** — pengungkapan informasi;
+- **Denial of Service** — gangguan terhadap ketersediaan; dan
+- **Elevation of Privilege** — peningkatan hak akses secara tidak sah.
 
-1. **Jaringan luar (attacker) ↔ VM utama (Suricata).** Batas terluar sistem — apa pun yang
-   berasal dari sisi attacker tidak boleh diasumsikan aman.
-2. **`agent/shipper.py` ↔ `api/main.py`.** Meski berpotensi berjalan di mesin yang sama, ini
-   tetap batas proses-ke-proses melalui HTTP dan harus diperlakukan sebagai tidak tepercaya
-   secara default.
-3. **`api/main.py` ↔ Dashboard (Laravel) / pengguna.** Batas publik-facing — siapa pun yang
-   bisa mengakses API melalui jaringan dianggap sebagai penyerang potensial.
-4. **`api/main.py` (RAG) ↔ Gemini API (eksternal).** Data yang dikirim ke sini sepenuhnya
-   meninggalkan infrastruktur tim dan masuk ke pihak ketiga (Google).
+Ruang lingkup mencakup alur `eve.json` → shipper → API → SQLite, endpoint API,
+engine RAG, dan integrasi ke Gemini API. Dashboard frontend belum memiliki
+implementasi pada repository ini, sehingga dibahas sebagai boundary integrasi,
+bukan sebagai komponen yang telah tervalidasi.
 
-## 3. Diagram Arsitektur & Alur Data
+Model ini ditujukan untuk prototipe dan demonstrasi pada jaringan terisolasi.
+Model ini **bukan** sertifikasi keamanan produksi dan tidak mengklaim bahwa
+SentinelOps mendeteksi seluruh teknik serangan.
 
-Diagram berikut menggambarkan alur data end-to-end beserta keempat batas kepercayaan di
-atas — mulai dari trafik mentah attacker, proses Suricata, pengiriman log oleh
-`shipper.py`, penyimpanan di SentinelOps DB, hingga interaksi pengguna dengan dashboard dan
-RAG Engine/Gemini API.
+## 2. Aset yang dilindungi
+
+| Aset | Nilai keamanan |
+| :--- | :--- |
+| Event Suricata dan database SQLite | Integritas serta kerahasiaan telemetry jaringan |
+| Skor risiko, alasan, dan riwayat host | Integritas keputusan prioritas dan kerahasiaan topologi |
+| Secret HMAC | Keaslian dan integritas pengiriman event |
+| Corpus RAG dan mapping SID | Keandalan interpretasi serta sitasi chatbot |
+| API Gemini dan API key | Kerahasiaan query, ketersediaan layanan, dan kontrol biaya |
+| Jejak waktu dan hasil pengujian | Reproduksibilitas serta akuntabilitas validasi |
+
+## 3. Arsitektur dan trust boundary
+
+1. **Jaringan sumber → sensor Suricata**
+   Traffic jaringan dianggap tidak tepercaya. Suricata menghasilkan `eve.json`
+   sebagai sumber telemetry.
+2. **`agent/shipper.py` → `api/main.py`**
+   Komunikasi HTTP diperlakukan sebagai boundary proses-ke-proses. Endpoint
+   `/ingest` memerlukan HMAC-SHA256 dan timestamp.
+3. **API → SQLite**
+   API memvalidasi dan meratakan event sebelum penyimpanan. Database adalah
+   aset lokal yang harus dilindungi oleh permission sistem operasi.
+4. **Pengguna/dashboard → API**
+   Endpoint baca mengembalikan IP, event, dan skor risiko. Pada implementasi
+   saat ini endpoint tersebut belum memiliki autentikasi aplikasi.
+5. **API/RAG → Gemini API**
+   Query chat dan konteks corpus dikirim ke penyedia eksternal untuk embedding
+   dan generasi jawaban. Boundary ini memiliki implikasi privasi dan biaya.
 
 ![Diagram alur data dan batas kepercayaan SentinelOps](threats-model.png)
 
-## 4. Analisis STRIDE per Komponen
+## 4. Asumsi keamanan
 
-### 4.1 `eve.json` (log Suricata)
+- Host yang menjalankan API, SQLite, dan secret HMAC berada dalam perimeter
+  yang dikelola tim.
+- File `eve.json` dan database tidak dapat dianggap sebagai sumber bukti
+  immutable tanpa kontrol filesystem atau log forwarding tambahan.
+- Pengguna yang dapat mengakses endpoint baca berpotensi melihat informasi
+  sensitif tentang host dan aktivitas jaringan.
+- Gemini API diperlakukan sebagai layanan pihak ketiga; data yang dikirim
+  tidak boleh diasumsikan tetap berada di jaringan internal.
+- Sistem beroperasi dalam mode **advisory-only** dan tidak memiliki hak untuk
+  memblokir IP atau mengubah firewall.
 
-| STRIDE | Ancaman | Mitigasi Saat Ini | Risiko Tersisa / Rekomendasi |
-|---|---|---|---|
-| Tampering | File dihapus atau di-*truncate* manual sehingga bukti hilang. Insiden ini pernah benar-benar terjadi saat pengumpulan dataset (lihat `docs/dataset.md`, bagian *Lessons Learned*) | Prosedur operasional: dilarang truncate manual, file dibiarkan terus mengalir | Belum ada proteksi teknis (mis. write-once/append-only, hash chaining) — murni bergantung pada disiplin operasional. Untuk produksi, pertimbangkan log forwarding real-time yang tidak menyisakan file lokal berukuran besar |
-| Information Disclosure | File berisi topologi jaringan lengkap (IP, port terbuka) | Permission file dibatasi ke user tertentu | Jika permission salah konfigurasi (pernah terjadi: sempat `root`-only, lalu perlu di-`chmod`), risiko under- atau over-exposure tetap ada |
+## 5. Analisis STRIDE dan kontrol
 
-### 4.2 `agent/shipper.py` (klien pengirim data)
+### 5.1 Log Suricata dan shipper
 
-| STRIDE | Ancaman | Mitigasi Saat Ini | Risiko Tersisa / Rekomendasi |
-|---|---|---|---|
-| Spoofing | Proses lain menyamar sebagai shipper resmi dan mengirim event palsu ke `/ingest` | HMAC-SHA256 signing — hanya pemegang secret yang bisa membuat signature valid (diverifikasi di `security.py`, teruji pada 7 skenario) | Jika secret bocor (mis. ter-commit ke git atau terekam di shell history), proteksi ini hilang total. Rekomendasi: gunakan `.env` yang di-*gitignore* dan rotasi secret secara berkala |
-| Tampering | Isi event diubah di tengah jalan (*man-in-the-middle*) | HMAC menutupi seluruh body — perubahan sekecil apa pun membuat signature tidak cocok dan otomatis ditolak | HMAC menjamin **integritas**, bukan **kerahasiaan** — koneksi masih HTTP polos sehingga isi tetap bisa disadap meski tidak bisa diubah tanpa terdeteksi. Rekomendasi: gunakan HTTPS/TLS untuk deployment produksi |
-| Denial of Service | Shipper (atau pihak yang menyamar dengan secret bocor) mengirim batch besar terus-menerus | Belum ada mitigasi | Rekomendasi: rate limiting di `/ingest` dan batas ukuran payload |
+| Kategori | Skenario ancaman | Kontrol saat ini | Risiko residual |
+| :--- | :--- | :--- | :--- |
+| Tampering | `eve.json` dihapus, dipotong, atau diubah sebelum dikirim | Shipper membaca file secara berurutan dan menyimpan offset | **Sedang:** belum ada append-only storage, hash chaining, atau forwarding immutable |
+| Spoofing | Proses lain mengirim event palsu ke `/ingest` | HMAC-SHA256 atas timestamp dan body | **Tinggi jika secret bocor**; secret harus disimpan di environment yang terlindungi dan dirotasi |
+| Tampering | Payload diubah selama transit | Signature mencakup seluruh body request | **Sedang:** HMAC menjamin integritas, bukan kerahasiaan; deployment produksi memerlukan HTTPS/TLS |
+| Repudiation | Pengirim menyangkal waktu atau isi pengiriman | Timestamp dan audit trail `scenario_log.csv` untuk validasi lab | **Sedang:** belum ada audit log terpusat atau tanda tangan log yang tahan perubahan |
+| Denial of Service | Batch berukuran besar atau request berulang memenuhi API | Belum ada pembatasan payload dan rate limit | **Tinggi:** perlu batas ukuran batch, timeout, dan rate limiting |
 
-### 4.3 `api/security.py` (verifikasi HMAC)
+### 5.2 Verifikasi HMAC pada `/ingest`
 
-| STRIDE | Ancaman | Mitigasi Saat Ini | Risiko Tersisa / Rekomendasi |
-|---|---|---|---|
-| Tampering | Timing attack untuk menebak signature yang benar byte demi byte | `hmac.compare_digest()` (constant-time comparison), bukan operator `==` biasa | Sudah sesuai standar industri; risiko rendah |
-| Repudiation / Replay | Request valid yang disadap lalu diputar ulang (*replay*) oleh penyerang | Dua lapis mitigasi: (1) jendela waktu 300 detik, (2) cache in-memory yang menolak signature identik yang dipakai dua kali — teruji eksplisit | Cache in-memory hanya berlaku untuk satu proses. Jika API dijalankan multi-worker/multi-instance, proteksi replay antar-instance melemah karena satu instance tidak tahu signature yang sudah diterima instance lain. Dicatat sebagai keterbatasan yang disengaja untuk skala prototipe |
-| Elevation of Privilege | Secret default development (`dev-secret-ganti-di-production`) terpakai tanpa disadari saat demo | Warning otomatis dicetak ke log jika environment variable belum di-set | Tetap bisa lolos jika tidak ada yang memeriksa log. Rekomendasi: gagal keras (*refuse to start*) pada mode production, bukan sekadar warning |
+| Kategori | Skenario ancaman | Kontrol saat ini | Risiko residual |
+| :--- | :--- | :--- | :--- |
+| Tampering | Signature ditebak melalui perbandingan byte demi byte | `hmac.compare_digest()` | Rendah untuk kontrol ini |
+| Replay | Request valid dikirim ulang | Jendela waktu 300 detik dan cache signature yang sudah dipakai | **Sedang:** cache hanya berlaku dalam satu proses API |
+| Elevation of Privilege | Secret development digunakan pada deployment | Peringatan ketika `SENTINELOPS_HMAC_SECRET` belum diatur | **Tinggi:** mode produksi sebaiknya menolak startup dengan secret default |
+| Spoofing | Timestamp tidak valid atau kedaluwarsa | Parsing integer dan validasi toleransi waktu | Rendah, selama sinkronisasi waktu host terjaga |
 
-### 4.4 `api/db.py` (SQLite)
+### 5.3 Validasi API dan database
 
-| STRIDE | Ancaman | Mitigasi Saat Ini | Risiko Tersisa / Rekomendasi |
-|---|---|---|---|
-| Tampering | SQL injection melalui input apa pun (nama host, dsb.) | Seluruh query di-*parameterize*, tanpa penggabungan string SQL — sudah diuji eksplisit dengan payload berbahaya (`' OR '1'='1`, `'; DROP TABLE`) | Risiko rendah selama disiplin ini dipertahankan pada kode baru yang ditambahkan ke depan |
-| Information Disclosure | File `.db` dapat dibaca siapa pun yang punya akses filesystem | Belum ada pembatasan eksplisit selain permission OS default | Tidak dienkripsi *at rest*. Untuk tahap prototipe/demo, risiko ini diterima dan dicatat sebagai future work |
-| Denial of Service | Tabel `events` tumbuh tanpa batas seiring waktu | Belum ada strategi pruning/retention | Di luar cakupan pengembangan 2 minggu; dicatat sebagai future work, bukan diabaikan |
+| Kategori | Skenario ancaman | Kontrol saat ini | Risiko residual |
+| :--- | :--- | :--- | :--- |
+| Tampering | Input event menyebabkan SQL injection | Semua query di `api/db.py` menggunakan parameter | Rendah pada kode saat ini; kontrol harus dipertahankan untuk perubahan berikutnya |
+| Tampering | Payload event tidak sesuai skema | Pydantic memvalidasi `IngestBatch`, `SuricataEvent`, dan tipe field | **Sedang:** field ekstra diabaikan dan batas jumlah/ukuran batch belum ditentukan |
+| Information Disclosure | File database dibaca oleh akun lokal lain | Bergantung pada permission filesystem | **Sedang:** database belum dienkripsi saat tersimpan |
+| Denial of Service | Tabel `events` tumbuh tanpa batas | Belum ada retention atau pruning | **Sedang:** perlu kebijakan retensi dan monitoring kapasitas |
+| Information Disclosure | Endpoint mengungkap IP dan event internal | Endpoint tersedia untuk pembacaan API | **Tinggi:** `/assets`, `/assets/{ip}`, `/timeline`, dan `/chat` belum memiliki autentikasi |
 
-### 4.5 `api/main.py` — endpoint publik (`/assets`, `/assets/{ip}`, `/timeline`, `/chat`)
+### 5.4 RAG engine dan Gemini API
 
-| STRIDE | Ancaman | Mitigasi Saat Ini | Risiko Tersisa / Rekomendasi |
-|---|---|---|---|
-| Spoofing / Elevation of Privilege | Endpoint-endpoint ini **tidak memiliki autentikasi sama sekali** — hanya `/ingest` yang diproteksi HMAC | Belum ada mitigasi | **Ini gap paling signifikan dan perlu diakui secara eksplisit.** Siapa pun yang dapat menjangkau API melalui jaringan bisa melihat seluruh skor risiko dan topologi. Untuk demo di jaringan terisolasi risikonya rendah, namun autentikasi (API key/session) wajib ditambahkan sebelum sistem dianggap siap produksi |
-| Information Disclosure | `/assets` dan `/timeline` membocorkan IP internal dan status keamanan jaringan pengguna kepada siapa pun yang bisa mengaksesnya | Hanya terlindungi oleh isolasi jaringan lab, bukan oleh kode aplikasi | Perlu autentikasi pada level aplikasi — isolasi jaringan saja tidak cukup diandalkan |
-| Denial of Service | Endpoint baca (`/assets`, `/timeline`) dapat dibanjiri request | Belum ada rate limiting | Di luar cakupan Tier 1/2 saat ini; dicatat untuk iterasi berikutnya |
+| Kategori | Skenario ancaman | Kontrol saat ini | Risiko residual |
+| :--- | :--- | :--- | :--- |
+| Information Disclosure | Query berisi detail internal dikirim ke pihak ketiga | Corpus yang digunakan bersumber dari dokumen publik; scoring tetap lokal | **Sedang:** query pengguna tetap dikirim ke Gemini dan belum melalui redaksi IP/hostname |
+| Tampering | Prompt injection mengubah peran atau keluaran model | System prompt membatasi corpus dan format jawaban | **Sedang:** belum ada validasi panjang, klasifikasi input, atau evaluasi prompt injection khusus |
+| Information Disclosure | Jawaban menampilkan konteks yang tidak semestinya | Retrieval dibatasi pada chunk teratas dan jawaban disertai sumber | **Sedang:** tetap memerlukan review output dan kebijakan data yang jelas |
+| Denial of Service | Pemanggilan `/chat` menghabiskan kuota atau biaya Gemini | Belum ada rate limit dan quota guard di endpoint | **Tinggi:** perlu pembatasan per pengguna/asal dan monitoring biaya |
 
-### 4.6 RAG Engine + Gemini API (eksternal)
+### 5.5 Dashboard dan pengguna
 
-| STRIDE | Ancaman | Mitigasi Saat Ini | Risiko Tersisa / Rekomendasi |
-|---|---|---|---|
-| Information Disclosure | Query pengguna (berpotensi memuat detail jaringan internal) dikirim ke API pihak ketiga (Google Gemini) | Belum ada penyaringan konten sebelum data dikirim | Tim perlu memutuskan secara sadar: batasi konteks yang dikirim ke LLM hanya pada deskripsi teknis umum (SID, signature), bukan IP/hostname mentah, jika kerahasiaan menjadi perhatian |
-| Tampering (Prompt Injection) | Pengguna menyusun pertanyaan yang dirancang untuk memanipulasi LLM agar keluar dari perannya (mis. meminta LLM mengabaikan instruksi sistem) | Temperature rendah (0.1) membuat output lebih kaku/faktual, namun ini **bukan** proteksi prompt injection yang sesungguhnya | Belum ada validasi/sanitasi input eksplisit. Rekomendasi minimal: batasi panjang query dan log seluruh interaksi chat untuk keperluan audit |
-| Denial of Service (biaya) | `/chat` dipanggil berulang kali sehingga menghabiskan kuota/biaya API Gemini | Belum ada mitigasi | Rekomendasi: rate limit khusus pada endpoint `/chat`, lebih ketat dibanding endpoint lain karena ada biaya nyata per panggilan |
+Dashboard frontend belum tersedia pada repository ini. Boundary ini tetap perlu
+diperhitungkan karena API mengembalikan informasi sensitif.
 
-### 4.7 Dashboard (Laravel)
+| Kategori | Skenario ancaman | Persyaratan mitigasi |
+| :--- | :--- | :--- |
+| Spoofing | Pengguna tanpa identitas mengakses dashboard | Terapkan autentikasi dan manajemen sesi sebelum deployment jaringan |
+| Information Disclosure | IP, event, dan skor terlihat oleh pihak yang tidak berwenang | Terapkan otorisasi berbasis peran serta HTTPS |
+| Tampering/XSS | `signature` atau `reason` dirender sebagai HTML | Gunakan escaping default dan jangan merender data event dengan raw HTML |
+| Repudiation | Perubahan atau pembacaan data tidak terlacak | Tambahkan audit log untuk login, query, dan perubahan konfigurasi |
 
-| STRIDE | Ancaman | Mitigasi Saat Ini | Risiko Tersisa / Rekomendasi |
-|---|---|---|---|
-| Tampering (XSS) | Teks `reason`/`signature` dari database dirender mentah di halaman, berpotensi disalahgunakan jika ada cara menyisipkan HTML/JS ke dalamnya | Blade (Laravel) melakukan escape otomatis melalui `{{ }}` selama tidak digunakan `{!! !!}` | Perlu dipastikan tidak ada satu pun output yang menggunakan `{!! !!}` untuk data yang bersumber dari `events`/`hosts` |
-| Spoofing | Belum jelas apakah dashboard memiliki login/sesi pengguna | Belum dikonfirmasi | Perlu koordinasi dengan tim dashboard — jika dashboard menampilkan data sensitif tanpa login sama sekali, ini memperberat gap pada bagian 4.5 |
+## 6. Kontrol yang telah diterapkan
 
-## 5. Ringkasan: Mitigasi yang Sudah Ada
+- HMAC-SHA256 pada endpoint `/ingest`, dengan constant-time comparison.
+- Replay protection berbasis timestamp dan signature cache.
+- Validasi terpusat serta flattening event pada boundary `/ingest`.
+- Parameterized query untuk operasi SQLite.
+- Batas `limit` pada endpoint `/timeline` hingga 500 event.
+- Arsitektur advisory-only yang tidak memiliki jalur eksekusi auto-block.
+- Corpus RAG yang dibatasi pada sumber keamanan yang terdokumentasi dan
+  jawaban yang mengembalikan sitasi.
 
-- HMAC-SHA256 signing pada `/ingest`, dengan constant-time comparison — teruji pada 7 skenario
-- Replay protection nyata (bukan sekadar pengecekan waktu) — signature yang dipakai ulang ditolak
-- Parameterized query di seluruh `db.py` — teruji tahan terhadap payload SQL injection
-- Validasi terpusat di boundary sistem (endpoint `/ingest`), bukan tersebar di berbagai tempat
-- Prosedur operasional terdokumentasi (`docs/dataset.md`) hasil dari insiden nyata selama
-  pengembangan (truncate log), bukan asumsi teoretis
+## 7. Prioritas mitigasi lanjutan
 
-## 6. Ringkasan: Risiko yang Belum Dimitigasi
+| Prioritas | Mitigasi | Alasan |
+| :--- | :--- | :--- |
+| P0 | Autentikasi dan otorisasi seluruh endpoint baca serta `/chat` | Mencegah pengungkapan topologi dan penyalahgunaan API |
+| P0 | Wajibkan secret non-default pada mode produksi | Menghilangkan kredensial bawaan yang dapat ditebak |
+| P0 | HTTPS/TLS antara shipper, API, dan dashboard | Menjamin kerahasiaan selain integritas HMAC |
+| P1 | Rate limiting, batas payload, dan quota guard `/chat` | Mengurangi risiko DoS dan biaya tidak terkendali |
+| P1 | Retensi event, monitoring kapasitas, dan backup database | Menjaga ketersediaan serta operasional jangka panjang |
+| P1 | Redaksi IP/hostname sensitif sebelum pengiriman ke Gemini | Mengurangi paparan data internal ke pihak ketiga |
+| P2 | Replay store terdistribusi dan audit log terpusat | Diperlukan bila API berjalan multi-worker atau multi-instance |
+| P2 | Penyimpanan log append-only atau hash chaining | Memperkuat non-repudiation dan integritas bukti |
 
-1. Endpoint `/assets`, `/assets/{ip}`, `/timeline`, `/chat` tidak memiliki autentikasi
-2. Belum ada HTTPS/TLS — HMAC menjamin integritas, bukan kerahasiaan
-3. Belum ada rate limiting pada endpoint mana pun
-4. `sentinelops.db` tidak dienkripsi *at rest*
-5. Replay protection hanya berlaku untuk single-process (belum siap multi-instance)
-6. Belum ada penanganan eksplisit untuk prompt injection pada `/chat`
+## 8. Kesimpulan risiko
 
-Keenam poin di atas merupakan keputusan sadar untuk memprioritaskan cakupan Tier 1 dalam
-waktu pengembangan yang terbatas — bukan kelalaian yang tidak disadari. Transparansi ini
-yang membedakan threat model yang jujur dari klaim "sudah aman" tanpa analisis pendukung.
+Untuk demonstrasi pada lab terisolasi, kontrol HMAC, validasi input, query
+terparameterisasi, dan desain advisory-only memberikan baseline keamanan yang
+memadai. Namun, implementasi saat ini belum dapat dianggap siap produksi karena
+endpoint baca belum diautentikasi, transport belum diwajibkan TLS, rate limiting
+belum tersedia, dan database belum dienkripsi.
+
+Batasan tersebut dinyatakan secara eksplisit agar klaim keamanan SentinelOps
+proporsional dengan kontrol yang benar-benar tersedia. Penambahan mitigasi
+prioritas P0 merupakan prasyarat sebelum sistem ditempatkan pada jaringan
+operasional atau memproses telemetry yang bersifat sensitif.

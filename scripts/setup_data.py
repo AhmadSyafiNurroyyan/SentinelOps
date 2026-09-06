@@ -6,7 +6,6 @@ from pathlib import Path
 import subprocess
 import sys
 
-
 REPO_ROOT = Path(__file__).resolve().parents[1]
 CORPUS_DIR = REPO_ROOT / "corpus"
 RAW_DIR = CORPUS_DIR / "raw"
@@ -100,7 +99,7 @@ def main() -> int:
     run_step("MITRE ATT&CK: download + extraction", attack_script)
     require_file(ATTACK_OUTPUT, "Hasil ekstraksi ATT&CK")
 
-    # 2) Emerging Threats: hanya parse kalau rule mentah tersedia.
+    # 2) Emerging Threats: parse jika rule mentah tersedia.
     if args.skip_et:
         print("\n[skip] Parsing Emerging Threats dinonaktifkan dengan --skip-et")
     elif not ET_RULES_PATH.exists():
@@ -114,8 +113,6 @@ def main() -> int:
     else:
         run_step("Emerging Threats: parse Suricata rules", et_script)
 
-    # sid_mapping.json saat ini merupakan input terkurasi hasil lab.
-    # Jangan dibuat ulang otomatis karena sumbernya adalah hasil konfirmasi scenario.
     require_file(
         SID_MAPPING,
         "sid_mapping.json (mapping SID hasil lab). "
@@ -157,7 +154,6 @@ def main() -> int:
     print()
     print("Berikutnya: jalankan FastAPI dan agent sesuai dokumentasi project.")
     return 0
-
 
 if __name__ == "__main__":
     try:
