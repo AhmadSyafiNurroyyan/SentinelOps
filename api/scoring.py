@@ -7,7 +7,6 @@ import sys
 
 import db 
 
-
 FITUR_LIST = [
     "jumlah_koneksi",
     "jumlah_port_unik",
@@ -38,10 +37,10 @@ def ip_layak_discore(ip_str):
         ip_obj = ipaddress.ip_address(ip_str)
     except ValueError:
         return False
-    if ip_str == "255.255.255.255":
-        return False
     if (ip_obj.is_multicast or ip_obj.is_reserved or ip_obj.is_loopback
             or ip_obj.is_link_local or ip_obj.is_unspecified):
+        return False
+    if isinstance(ip_obj, ipaddress.IPv4Address) and ip_obj.packed[-1] == 255:
         return False
     return True
 
@@ -208,7 +207,7 @@ def hitung_skor_host(dest_ip, baseline_mulai, baseline_selesai,
 
     skor_per_fitur = {f: skor_dengan_magnitudo(fitur_sekarang[f], distribusi[f]) for f in FITUR_LIST}
     fitur_dominan = max(skor_per_fitur, key=skor_per_fitur.get)
-    skor = skor_per_fitur[fitur_dominan]
+    skor = min(100.0, skor_per_fitur[fitur_dominan])
 
     if skor >= 90:
         band = "Berisiko"
