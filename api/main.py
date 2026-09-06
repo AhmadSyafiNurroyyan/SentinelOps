@@ -15,16 +15,13 @@ from fastapi.middleware.cors import CORSMiddleware
 
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],   # untuk pengembangan; saat produksi ganti ke domain frontend
+    allow_origins=["*"],  
     allow_methods=["*"],
     allow_headers=["*"],
 )
 
-# Pastikan skema ada sejak modul dimuat, sebelum request pertama masuk.
 db.init_db()
 
-# Muat engine RAG sekali. Kalau index belum dibangun, aplikasi tetap
-# hidup dan /chat memberi pesan jelas, bukan crash saat startup.
 _rag_engine = None
 _rag_error = None
 try:

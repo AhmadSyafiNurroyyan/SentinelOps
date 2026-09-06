@@ -1,0 +1,336 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>SentinelOps</title>
+<script crossorigin src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
+<script crossorigin src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
+<script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+<style>
+  :root{
+    --bg:#0e1621;--panel:#16212e;--panel-2:#1c2937;--line:#263543;
+    --ink:#e6edf3;--ink-dim:#8ba0b3;
+    --aman:#3fb27f;--perhatian:#e0a53f;--berisiko:#e0603f;--accent:#4a9fd4;
+    --mono:'SF Mono','Consolas','Roboto Mono',monospace;
+    --sans:-apple-system,'Segoe UI',Roboto,sans-serif;
+  }
+  *{box-sizing:border-box;margin:0;padding:0}
+  body{background:var(--bg);color:var(--ink);font-family:var(--sans);font-size:14px;line-height:1.5}
+  #root{display:flex;min-height:100vh}
+  .sidenav{width:210px;background:var(--panel);border-right:1px solid var(--line);padding:20px 0;flex-shrink:0}
+  .brand{padding:0 20px 20px;border-bottom:1px solid var(--line);margin-bottom:12px}
+  .brand h1{font-size:17px;letter-spacing:-.3px;display:flex;align-items:center;gap:8px}
+  .brand .dot{width:9px;height:9px;border-radius:50%}
+  .brand p{font-size:11px;color:var(--ink-dim);margin-top:3px}
+  .navitem{display:flex;align-items:center;gap:11px;padding:11px 20px;color:var(--ink-dim);cursor:pointer;border-left:2px solid transparent;font-size:13.5px}
+  .navitem:hover{background:var(--panel-2);color:var(--ink)}
+  .navitem.active{color:var(--ink);border-left-color:var(--accent);background:var(--panel-2)}
+  .navitem svg{width:17px;height:17px;flex-shrink:0}
+  .main{flex:1;display:flex;flex-direction:column;min-width:0}
+  .topbar{height:56px;border-bottom:1px solid var(--line);display:flex;align-items:center;justify-content:space-between;padding:0 24px;background:var(--panel)}
+  .topbar h2{font-size:15px;font-weight:600}
+  .topbar .status{font-size:12px;color:var(--ink-dim);display:flex;align-items:center;gap:7px}
+  .live{width:7px;height:7px;border-radius:50%;background:var(--aman);animation:pulse 2s infinite}
+  @keyframes pulse{0%,100%{opacity:1}50%{opacity:.3}}
+  .content{padding:24px;overflow-y:auto;flex:1}
+  .cards{display:grid;grid-template-columns:repeat(3,1fr);gap:14px;margin-bottom:22px}
+  .card{background:var(--panel);border:1px solid var(--line);border-radius:8px;padding:16px 18px}
+  .card .label{font-size:12px;color:var(--ink-dim)}
+  .card .num{font-size:30px;font-weight:650;margin-top:6px;letter-spacing:-1px}
+  .card.crit .num{color:var(--berisiko)}
+  .card.warn .num{color:var(--perhatian)}
+  .panel-box{background:var(--panel);border:1px solid var(--line);border-radius:8px;overflow:hidden}
+  .panel-head{padding:13px 18px;border-bottom:1px solid var(--line);font-size:13px;font-weight:600;display:flex;justify-content:space-between;align-items:center}
+  .panel-head .hint{font-size:11px;color:var(--ink-dim);font-weight:400}
+  table{width:100%;border-collapse:collapse}
+  th{text-align:left;padding:10px 18px;font-size:11px;color:var(--ink-dim);font-weight:600;border-bottom:1px solid var(--line)}
+  td{padding:12px 18px;border-bottom:1px solid var(--line);font-size:13px}
+  tr:last-child td{border-bottom:none}
+  tr.host-row{cursor:pointer}
+  tr.host-row:hover{background:var(--panel-2)}
+  .ip{font-family:var(--mono);font-size:12.5px}
+  .badge{display:inline-flex;align-items:center;gap:6px;padding:3px 10px;border-radius:20px;font-size:11.5px;font-weight:600}
+  .badge::before{content:'';width:6px;height:6px;border-radius:50%;background:currentColor}
+  .b-Aman{background:rgba(63,178,127,.13);color:var(--aman)}
+  .b-Perhatian{background:rgba(224,165,63,.13);color:var(--perhatian)}
+  .b-Berisiko{background:rgba(224,96,63,.13);color:var(--berisiko)}
+  .score-bar{display:inline-block;width:70px;height:6px;background:var(--line);border-radius:3px;overflow:hidden;vertical-align:middle;margin-right:8px}
+  .score-fill{height:100%;border-radius:3px}
+  .reason{color:var(--ink-dim);font-size:12px}
+  .timeline-cols{display:grid;grid-template-columns:1fr 1fr;gap:14px}
+  .tag{font-size:10px;padding:2px 8px;border-radius:4px}
+  .tag-sig{background:rgba(74,159,212,.15);color:var(--accent)}
+  .tag-stat{background:rgba(224,165,63,.15);color:var(--perhatian)}
+  .event{padding:12px 18px;border-bottom:1px solid var(--line);display:flex;gap:12px;align-items:flex-start}
+  .event:last-child{border-bottom:none}
+  .event .time{font-family:var(--mono);font-size:11px;color:var(--ink-dim);flex-shrink:0;width:64px}
+  .event .body .ttl{font-weight:600;font-size:12.5px}
+  .event .body .meta{color:var(--ink-dim);font-size:11.5px;margin-top:2px}
+  .note{margin-top:14px;padding:12px 16px;background:var(--panel-2);border:1px solid var(--line);border-radius:8px;font-size:12.5px;color:var(--ink-dim)}
+  .note b{color:var(--ink)}
+  .chat-wrap{max-width:760px;margin:0 auto;display:flex;flex-direction:column;height:calc(100vh - 130px)}
+  .chat-log{flex:1;overflow-y:auto;padding:8px 4px 20px}
+  .msg{margin-bottom:18px;display:flex}
+  .msg.user{justify-content:flex-end}
+  .bubble{max-width:80%;padding:12px 16px;border-radius:12px;font-size:13.5px;white-space:pre-wrap}
+  .msg.user .bubble{background:var(--accent);color:#071018;border-bottom-right-radius:3px}
+  .msg.ai .bubble{background:var(--panel);border:1px solid var(--line);border-bottom-left-radius:3px}
+  .cites{margin-top:11px;display:flex;flex-wrap:wrap;gap:7px}
+  .cite{font-size:11px;font-family:var(--mono);padding:4px 9px;border-radius:5px;background:var(--panel-2);border:1px solid var(--line);color:var(--accent);text-decoration:none}
+  .chips{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:12px}
+  .chip{font-size:12px;padding:6px 12px;border-radius:16px;background:var(--panel);border:1px solid var(--line);color:var(--ink-dim);cursor:pointer}
+  .chip:hover{color:var(--ink);border-color:var(--accent)}
+  .chat-input{display:flex;gap:10px}
+  .chat-input input{flex:1;padding:12px 15px;border-radius:8px;background:var(--panel);border:1px solid var(--line);color:var(--ink);font-size:13.5px;font-family:var(--sans)}
+  .chat-input input:focus{outline:none;border-color:var(--accent)}
+  .chat-input button{padding:0 20px;border-radius:8px;border:none;background:var(--accent);color:#071018;font-weight:600;cursor:pointer}
+  .chat-input button:disabled{opacity:.5;cursor:default}
+  .back{color:var(--accent);cursor:pointer;font-size:13px;margin-bottom:16px;display:inline-block}
+  .detail-grid{display:grid;grid-template-columns:1fr 1fr;gap:14px;margin-top:14px}
+  .kv{display:flex;justify-content:space-between;padding:9px 0;border-bottom:1px solid var(--line);font-size:13px}
+  .kv:last-child{border-bottom:none}
+  .kv .k{color:var(--ink-dim)}
+  .trend-bar{display:flex;align-items:flex-end;gap:4px;height:80px;padding:14px 18px}
+  .trend-bar .col{flex:1;border-radius:2px 2px 0 0;min-height:3px}
+  .state{padding:40px;text-align:center;color:var(--ink-dim);font-size:13px}
+  .err{color:var(--berisiko)}
+</style>
+</head>
+<body>
+<div id="root"></div>
+<script type="text/babel">
+const {useState,useEffect,useCallback} = React;
+
+/* ============================================================
+   Satu tempat untuk mengganti alamat backend.
+   Ganti ke URL produksi (mis. Railway) saat deploy.
+   ============================================================ */
+const API = "http://localhost:8000";
+
+const BAND_COLOR = {Aman:"var(--aman)",Perhatian:"var(--perhatian)",Berisiko:"var(--berisiko)"};
+
+/* ---------- util fetch dengan penanganan error ---------- */
+async function apiGet(path){
+  const r = await fetch(API+path);
+  if(!r.ok) throw new Error("HTTP "+r.status);
+  return r.json();
+}
+async function apiPost(path,body){
+  const r = await fetch(API+path,{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify(body)});
+  if(!r.ok) throw new Error("HTTP "+r.status);
+  return r.json();
+}
+
+/* ================= HALAMAN 1: DASHBOARD ================= */
+function Dashboard({onOpenHost}){
+  const [hosts,setHosts]=useState(null);
+  const [err,setErr]=useState(null);
+
+  const load=useCallback(()=>{
+    apiGet("/assets").then(d=>{setHosts(d.hosts);setErr(null);}).catch(e=>setErr(e.message));
+  },[]);
+  useEffect(()=>{load();const iv=setInterval(load,60000);return()=>clearInterval(iv);},[load]);
+
+  if(err) return <div className="state err">Gagal memuat data host: {err}. Pastikan backend berjalan di {API}.</div>;
+  if(!hosts) return <div className="state">Memuat data host...</div>;
+
+  const warn=hosts.filter(h=>h.band==="Perhatian").length;
+  const crit=hosts.filter(h=>h.band==="Berisiko").length;
+
+  return(<div>
+    <div className="cards">
+      <div className="card"><div className="label">Total host dipantau</div><div className="num">{hosts.length}</div></div>
+      <div className="card warn"><div className="label">Perlu perhatian</div><div className="num">{warn}</div></div>
+      <div className="card crit"><div className="label">Berisiko</div><div className="num">{crit}</div></div>
+    </div>
+    <div className="panel-box">
+      <div className="panel-head">Daftar Host <span className="hint">diurutkan skor tertinggi · klik baris untuk detail</span></div>
+      {hosts.length===0
+        ? <div className="state">Belum ada host terpantau. Jalankan Log Shipper untuk mulai mengirim data.</div>
+        : <table>
+        <thead><tr><th>Host</th><th>Skor</th><th>Status</th><th>Alasan</th><th>Terakhir aktif</th></tr></thead>
+        <tbody>{hosts.map(h=>(
+          <tr key={h.ip} className="host-row" onClick={()=>onOpenHost(h.ip)}>
+            <td className="ip">{h.ip}</td>
+            <td><span className="score-bar"><span className="score-fill" style={{width:h.risk_score+"%",background:BAND_COLOR[h.band]}}></span></span>{h.risk_score}</td>
+            <td><span className={"badge b-"+h.band}>{h.band}</span></td>
+            <td className="reason">{h.reason||"—"}</td>
+            <td className="reason">{h.last_seen||"—"}</td>
+          </tr>))}
+        </tbody>
+      </table>}
+    </div>
+  </div>);
+}
+
+/* ================= HALAMAN 2: TIMELINE ================= */
+function Timeline(){
+  const [events,setEvents]=useState(null);
+  const [err,setErr]=useState(null);
+  useEffect(()=>{apiGet("/timeline").then(d=>setEvents(d.events)).catch(e=>setErr(e.message));},[]);
+
+  if(err) return <div className="state err">Gagal memuat timeline: {err}.</div>;
+  if(!events) return <div className="state">Memuat timeline...</div>;
+
+  const sig=events.filter(e=>e.source==="signature");
+  const stat=events.filter(e=>e.source==="statistical");
+  const fmt=t=>(t||"").slice(11,19)||"—";
+  const Row=e=>(<div className="event" key={e.ts+e.dest_ip+Math.random()}>
+    <span className="time">{fmt(e.ts)}</span>
+    <div className="body">
+      <div className="ttl">{e.signature||"Aktivitas flow"}</div>
+      <div className="meta">{e.src_ip} → {e.dest_ip}{e.sid?` · SID ${e.sid}`:""}</div>
+    </div></div>);
+
+  return(<div>
+    <div className="timeline-cols">
+      <div className="panel-box">
+        <div className="panel-head">Terdeteksi Signature <span className="tag tag-sig">SURICATA</span></div>
+        {sig.length?sig.map(Row):<div className="state">Belum ada alert.</div>}
+      </div>
+      <div className="panel-box">
+        <div className="panel-head">Anomali Statistik <span className="tag tag-stat">TANPA SIGNATURE</span></div>
+        {stat.length?stat.map(Row):<div className="state">Belum ada anomali.</div>}
+      </div>
+    </div>
+    <div className="note"><b>Kenapa dua kolom?</b> Kiri adalah yang Suricata sudah deteksi lewat rule.
+      Kanan adalah anomali yang <b>tidak cocok signature apa pun</b>, ditangkap oleh skoring statistik kami.
+      Inilah yang membedakan SentinelOps dari sekadar menampilkan ulang alert Suricata.</div>
+  </div>);
+}
+
+/* ================= HALAMAN 3: DETAIL HOST ================= */
+function HostDetail({ip,onBack,onAsk}){
+  const [host,setHost]=useState(null);
+  const [err,setErr]=useState(null);
+  useEffect(()=>{apiGet("/assets/"+ip).then(setHost).catch(e=>setErr(e.message));},[ip]);
+
+  if(err) return <div><span className="back" onClick={onBack}>← Kembali</span><div className="state err">Gagal memuat: {err}</div></div>;
+  if(!host) return <div className="state">Memuat detail {ip}...</div>;
+
+  const trend=host.trend||[];
+  const maxS=Math.max(100,...trend.map(t=>t.risk_score));
+  return(<div>
+    <span className="back" onClick={onBack}>← Kembali ke daftar host</span>
+    <div className="cards" style={{marginTop:16}}>
+      <div className="card"><div className="label">Host</div><div className="num ip" style={{fontSize:18}}>{host.ip}</div></div>
+      <div className="card"><div className="label">Skor risiko</div><div className="num" style={{color:BAND_COLOR[host.band]}}>{host.risk_score}</div></div>
+      <div className="card"><div className="label">Status</div><div style={{marginTop:12}}><span className={"badge b-"+host.band}>{host.band}</span></div></div>
+    </div>
+    <div className="detail-grid">
+      <div className="panel-box">
+        <div className="panel-head">Informasi</div>
+        <div style={{padding:"6px 18px 14px"}}>
+          <div className="kv"><span className="k">Alasan</span><span>{host.reason||"—"}</span></div>
+          <div className="kv"><span className="k">Status baseline</span><span>{host.baseline_status}</span></div>
+          <div className="kv"><span className="k">Total event</span><span>{host.total_events}</span></div>
+          <div className="kv"><span className="k">Terakhir aktif</span><span>{host.last_seen||"—"}</span></div>
+        </div>
+      </div>
+      <div className="panel-box">
+        <div className="panel-head">Tren Skor</div>
+        {trend.length
+          ? <div className="trend-bar">{trend.slice().reverse().map((t,i)=>(
+              <div key={i} className="col" title={t.risk_score} style={{height:(t.risk_score/maxS*100)+"%",background:BAND_COLOR[t.band]}}></div>))}</div>
+          : <div className="state">Belum ada riwayat skor.</div>}
+      </div>
+    </div>
+    <div style={{marginTop:16}}>
+      <button className="chip" style={{padding:"9px 16px"}} onClick={()=>onAsk(`kenapa host ${ip} berisiko?`)}>Tanya asisten tentang host ini</button>
+    </div>
+  </div>);
+}
+
+/* ================= HALAMAN 4: CHAT ================= */
+function Chat({pending,clearPending}){
+  const [log,setLog]=useState([{role:"ai",text:"Halo. Saya asisten analis keamanan SentinelOps. Tanyakan tentang alert atau aktivitas mencurigakan di jaringan Anda.",sources:[]}]);
+  const [input,setInput]=useState("");
+  const [busy,setBusy]=useState(false);
+
+  const send=useCallback(async(q)=>{
+    if(!q||!q.trim()||busy) return;
+    setLog(l=>[...l,{role:"user",text:q}]);
+    setInput("");setBusy(true);
+    try{
+      const r=await apiPost("/chat",{query:q});
+      setLog(l=>[...l,{role:"ai",text:r.answer,sources:r.sources||[]}]);
+    }catch(e){
+      setLog(l=>[...l,{role:"ai",text:"Maaf, terjadi kendala menghubungi sistem. ("+e.message+")",sources:[]}]);
+    }
+    setBusy(false);
+  },[busy]);
+
+  useEffect(()=>{if(pending){send(pending);clearPending();}},[pending,send,clearPending]);
+
+  return(<div className="chat-wrap">
+    <div className="chat-log">
+      {log.map((m,i)=>(<div key={i} className={"msg "+m.role}>
+        <div className="bubble">{m.text}
+          {m.sources&&m.sources.length>0&&<div className="cites">
+            {m.sources.map((s,j)=>(<a key={j} className="cite" href={s.source_url||"#"} target="_blank" rel="noopener">
+              {s.technique_id} · {s.name}</a>))}
+          </div>}
+        </div>
+      </div>))}
+      {busy&&<div className="msg ai"><div className="bubble">Menganalisis...</div></div>}
+    </div>
+    <div className="chips">
+      {["apa itu port scan?","apa arti SID 1000001?","apa itu brute force?"].map(c=>(
+        <div key={c} className="chip" onClick={()=>send(c)}>{c}</div>))}
+    </div>
+    <div className="chat-input">
+      <input value={input} placeholder="Ketik pertanyaan..." onChange={e=>setInput(e.target.value)}
+        onKeyDown={e=>e.key==="Enter"&&send(input)}/>
+      <button onClick={()=>send(input)} disabled={busy}>Kirim</button>
+    </div>
+  </div>);
+}
+
+/* ================= SHELL ================= */
+function App(){
+  const [page,setPage]=useState("dash");
+  const [detailIp,setDetailIp]=useState(null);
+  const [pendingQ,setPendingQ]=useState(null);
+
+  const openHost=ip=>{setDetailIp(ip);setPage("detail");};
+  const askAndGoChat=q=>{setPendingQ(q);setPage("chat");};
+
+  const titles={dash:"Dashboard Aset",timeline:"Timeline Anomali",detail:"Detail Host",chat:"Analyst Chat"};
+  const Icon=({d})=><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">{d}</svg>;
+
+  return(<React.Fragment>
+    <nav className="sidenav">
+      <div className="brand">
+        <h1><span className="dot" style={{background:"var(--aman)",boxShadow:"0 0 8px var(--aman)"}}></span>SentinelOps</h1>
+        <p>Analis SOC Virtual</p>
+      </div>
+      <div className={"navitem"+(page==="dash"?" active":"")} onClick={()=>setPage("dash")}>
+        <Icon d={<React.Fragment><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/></React.Fragment>}/>
+        Dashboard Aset</div>
+      <div className={"navitem"+(page==="timeline"?" active":"")} onClick={()=>setPage("timeline")}>
+        <Icon d={<React.Fragment><line x1="12" y1="2" x2="12" y2="22"/><polyline points="8 6 12 2 16 6"/><polyline points="8 18 12 22 16 18"/></React.Fragment>}/>
+        Timeline Anomali</div>
+      <div className={"navitem"+(page==="chat"?" active":"")} onClick={()=>setPage("chat")}>
+        <Icon d={<path d="M21 11.5a8.38 8.38 0 0 1-.9 3.8 8.5 8.5 0 0 1-7.6 4.7 8.38 8.38 0 0 1-3.8-.9L3 21l1.9-5.7a8.38 8.38 0 0 1-.9-3.8 8.5 8.5 0 0 1 4.7-7.6 8.38 8.38 0 0 1 3.8-.9h.5a8.48 8.48 0 0 1 8 8v.5z"/>}/>
+        Analyst Chat</div>
+    </nav>
+    <div className="main">
+      <div className="topbar">
+        <h2>{titles[page]}</h2>
+        <div className="status"><span className="live"></span> Pemantauan aktif</div>
+      </div>
+      <div className="content">
+        {page==="dash"&&<Dashboard onOpenHost={openHost}/>}
+        {page==="timeline"&&<Timeline/>}
+        {page==="detail"&&<HostDetail ip={detailIp} onBack={()=>setPage("dash")} onAsk={askAndGoChat}/>}
+        {page==="chat"&&<Chat pending={pendingQ} clearPending={()=>setPendingQ(null)}/>}
+      </div>
+    </div>
+  </React.Fragment>);
+}
+
+ReactDOM.createRoot(document.getElementById("root")).render(<App/>);
+</script>
+</body>
+</html>
